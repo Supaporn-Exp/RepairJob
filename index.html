@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบติดตามงานซ่อม</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: #e2e0d8;
+    --text: #1a1a18;
+    --muted: #6b6a66;
+    --accent: #1a1a18;
+    --radius: 12px;
+    --font: 'Sarabun', sans-serif;
+  }
+  body { background: var(--bg); font-family: var(--font); color: var(--text); min-height: 100vh; }
+
+  /* Header */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .header-brand { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-brand span { color: var(--muted); font-weight: 400; }
+  .header-admin { font-size: 13px; color: var(--muted); text-decoration: none; border: 1px solid var(--border); padding: 5px 12px; border-radius: 20px; transition: all 0.15s; }
+  .header-admin:hover { background: var(--bg); color: var(--text); }
+
+  /* Main */
+  .main { max-width: 680px; margin: 0 auto; padding: 2rem 1rem; }
+
+  /* Search box */
+  .search-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .search-label { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .search-row { display: flex; gap: 8px; }
+  .search-input { flex: 1; border: 1.5px solid var(--border); border-radius: 8px; padding: 11px 14px; font-size: 16px; font-family: var(--font); outline: none; transition: border-color 0.15s; background: var(--bg); }
+  .search-input:focus { border-color: var(--accent); background: var(--surface); }
+  .search-btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 11px 20px; font-size: 14px; font-family: var(--font); font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; }
+  .search-btn:hover { opacity: 0.85; }
+  .search-btn:active { opacity: 0.7; }
+
+  /* Status badge */
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+
+  /* Result card */
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .job-id { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .job-cat { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+  .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 16px; font-size: 14px; }
+  .info-key { color: var(--muted); white-space: nowrap; }
+  .info-val { font-weight: 500; word-break: break-word; }
+  .repair-list { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .repair-list strong { color: var(--text); font-weight: 600; }
+
+  /* Table for multiple results */
+  .result-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .result-count { font-size: 13px; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 14px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { cursor: pointer; transition: background 0.1s; }
+  tbody tr:hover td { background: var(--bg); }
+  .td-jobno { font-weight: 700; }
+  .td-cat { color: var(--muted); font-size: 13px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Empty/loading states */
+  .state-box { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .state-icon { font-size: 40px; margin-bottom: 10px; }
+  .state-text { font-size: 15px; }
+  .state-sub { font-size: 13px; margin-top: 4px; }
+
+  /* Spinner */
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Mobile tweaks */
+  @media (max-width: 480px) {
+    .main { padding: 1rem 0.75rem; }
+    .info-grid { grid-template-columns: 1fr; gap: 2px; }
+    .info-key { font-size: 12px; }
+    th.hide-mobile, td.hide-mobile { display: none; }
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">ระบบติดตามงานซ่อม <span>| Watch Service</span></div>
+  <a href="admin.html" class="header-admin">⚙ Admin</a>
+</div>
+
+<div class="main">
+  <div class="search-wrap">
+    <div class="search-label">ระบุ Job No เพื่อตรวจสอบสถานะงานซ่อม</div>
+    <div class="search-row">
+      <input class="search-input" id="q" type="text" placeholder="เช่น N05929 หรือ 00/25001" autocomplete="off" autocorrect="off" spellcheck="false" />
+      <button class="search-btn" onclick="doSearch()">ค้นหา</button>
+    </div>
+  </div>
+  <div id="results"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://etggtjqnkyzjqmiwokth.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STATUS_STYLE = {
+  'เสร็จและจัดส่งแล้ว':   { bg:'#e8f5e0', color:'#2e6b10' },
+  'งานเสร็จรอมารับ':       { bg:'#d4f2e7', color:'#0a6644' },
+  'กำลังซ่อม':             { bg:'#ddeeff', color:'#1254a0' },
+  'กำลังซ่อม+ส่งทำ':       { bg:'#ddeeff', color:'#1254a0' },
+  'เทียบเวลา':             { bg:'#ddeeff', color:'#1254a0' },
+  'รอคิวช่าง':             { bg:'#fff0d4', color:'#8a4a00' },
+  'รอเช็ค':                { bg:'#fff0d4', color:'#8a4a00' },
+  'สั่งแล้วรออะไหล่':      { bg:'#fff0d4', color:'#7a4500' },
+  'รอหาอะหลั่ย':           { bg:'#fff0d4', color:'#7a4500' },
+  'ส่งทำ':                 { bg:'#fff0d4', color:'#7a4500' },
+  'รอ Confirm':            { bg:'#fff0d4', color:'#7a4500' },
+  'เก็บที่ออฟฟิศ':         { bg:'#f0eeea', color:'#555' },
+  'ไม่ซ่อมรับคืนแล้ว':     { bg:'#f0eeea', color:'#555' },
+  'รอคืนลูกค้าไม่ซ่อม':   { bg:'#f0eeea', color:'#555' },
+  'รอคืนสาขา':            { bg:'#f0eeea', color:'#555' },
+  'คืนไม่มีอะไหล่':        { bg:'#fde8e8', color:'#9b2222' },
+  'ติดต่อไม่ได้':           { bg:'#fde8e8', color:'#9b2222' },
+};
+
+function badge(status) {
+  const s = STATUS_STYLE[status] || { bg:'#f0eeea', color:'#555' };
+  return `<span class="badge" style="background:${s.bg};color:${s.color};">${status || '—'}</span>`;
+}
+
+function fmt(v) { return v && v !== '' ? v : '—'; }
+function fmtMoney(v) { const n = parseFloat(v); return isNaN(n) || n === 0 ? '—' : '฿' + n.toLocaleString('th-TH'); }
+
+function renderCard(r) {
+  const details = [
+    ['ลูกค้า', fmt(r.clientname)],
+    ['โทรศัพท์', fmt(r.phone)],
+    ['วันที่รับงาน', fmt(r.jobdate)],
+    ['วันที่เสร็จ', fmt(r.finishdate)],
+    ['Serial No.', fmt(r.serialno)],
+    ['ราคาประเมิน', fmtMoney(r.estimate)],
+  ].filter(([,v]) => v !== '—');
+
+  const repairText = [r.actdesc1, r.actdesc2].filter(Boolean).join(' · ');
+
+  return `
+    <div class="result-card">
+      <div class="card-top">
+        <div>
+          <div class="job-id">${r.jobno}</div>
+          <div class="job-cat">${fmt(r.category)}</div>
+        </div>
+        ${badge(r.finaldesc)}
+      </div>
+      <div class="info-grid">
+        ${details.map(([k,v]) => `<div class="info-key">${k}</div><div class="info-val">${v}</div>`).join('')}
+      </div>
+      ${repairText ? `<div class="repair-list"><strong>รายการซ่อม:</strong> ${repairText}</div>` : ''}
+    </div>`;
+}
+
+function renderTable(rows) {
+  const trs = rows.map(r => `
+    <tr onclick="showDetail('${r.jobno.replace(/'/g,"\\'")}')">
+      <td class="td-jobno">${r.jobno}</td>
+      <td>${fmt(r.clientname)}</td>
+      <td class="td-cat hide-mobile">${fmt(r.category)}</td>
+      <td>${badge(r.finaldesc)}</td>
+      <td class="hide-mobile" style="color:#6b6a66;">${fmt(r.jobdate)}</td>
+    </tr>`).join('');
+  return `
+    <div class="result-table-wrap">
+      <div class="result-count">พบ ${rows.length} รายการ — คลิกแถวเพื่อดูรายละเอียด</div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th>Job No</th><th>ลูกค้า</th>
+            <th class="hide-mobile">นาฬิกา</th>
+            <th>สถานะ</th>
+            <th class="hide-mobile">วันที่รับ</th>
+          </tr></thead>
+          <tbody>${trs}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function doSearch() {
+  const q = document.getElementById('q').value.trim();
+  const div = document.getElementById('results');
+  if (!q) { div.innerHTML = ''; return; }
+
+  div.innerHTML = `<div class="state-box"><div class="spinner"></div><div class="state-text">กำลังค้นหา...</div></div>`;
+
+  const { data, error } = await sb.from('repair_jobs')
+    .select('*')
+    .ilike('jobno', `%${q}%`)
+    .order('jobdate', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    div.innerHTML = `<div class="state-box"><div class="state-icon">⚠️</div><div class="state-text">เกิดข้อผิดพลาด</div><div class="state-sub">${error.message}</div></div>`;
+    return;
+  }
+  if (!data || data.length === 0) {
+    div.innerHTML = `<div class="state-box"><div class="state-icon">🔍</div><div class="state-text">ไม่พบ Job No "<strong>${q}</strong>"</div><div class="state-sub">กรุณาตรวจสอบเลขงานอีกครั้ง</div></div>`;
+    return;
+  }
+  if (data.length === 1) {
+    div.innerHTML = renderCard(data[0]);
+  } else {
+    window._searchResults = data;
+    div.innerHTML = renderTable(data);
+  }
+}
+
+async function showDetail(jobno) {
+  const r = (window._searchResults || []).find(x => x.jobno === jobno);
+  if (r) {
+    document.getElementById('results').innerHTML = renderCard(r);
+    document.getElementById('q').value = jobno;
+  }
+}
+
+document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+</script>
+</body>
+</html>

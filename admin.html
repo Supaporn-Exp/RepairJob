@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — ระบบติดตามงานซ่อม</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0; --surface: #ffffff; --border: #e2e0d8;
+    --text: #1a1a18; --muted: #6b6a66; --accent: #1a1a18;
+    --danger: #c0392b; --success: #2e6b10;
+    --radius: 12px; --font: 'Sarabun', sans-serif;
+  }
+  body { background: var(--bg); font-family: var(--font); color: var(--text); min-height: 100vh; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .header-brand { font-size: 16px; font-weight: 700; }
+  .header-brand span { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .back-link { font-size: 13px; color: var(--muted); text-decoration: none; border: 1px solid var(--border); padding: 5px 12px; border-radius: 20px; }
+  .back-link:hover { background: var(--bg); color: var(--text); }
+
+  .main { max-width: 680px; margin: 0 auto; padding: 2rem 1rem; }
+
+  /* Login */
+  #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
+  .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 380px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .login-box h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .login-box p { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+  .field { margin-bottom: 1rem; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .field input { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 15px; font-family: var(--font); outline: none; }
+  .field input:focus { border-color: var(--accent); }
+  .btn-primary { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-family: var(--font); font-weight: 600; cursor: pointer; }
+  .btn-primary:hover { opacity: 0.85; }
+  .err-msg { color: var(--danger); font-size: 13px; margin-top: 8px; }
+
+  /* Admin panel */
+  #admin-panel { display: none; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .section h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .section .sub { font-size: 13px; color: var(--muted); margin-bottom: 1rem; }
+
+  /* Upload zone */
+  .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 2.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--bg); }
+  .upload-zone .icon { font-size: 32px; margin-bottom: 8px; }
+  .upload-zone .main-text { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .upload-zone .sub-text { font-size: 13px; color: var(--muted); }
+
+  /* Progress */
+  .progress-wrap { display: none; margin-top: 1rem; }
+  .progress-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .progress-track { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+
+  /* Result message */
+  .msg { border-radius: 8px; padding: 12px 16px; font-size: 14px; margin-top: 1rem; display: none; }
+  .msg.success { background: #e8f5e0; color: var(--success); }
+  .msg.error { background: #fde8e8; color: var(--danger); }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .stat { background: var(--bg); border-radius: 10px; padding: 1rem; }
+  .stat .n { font-size: 24px; font-weight: 700; }
+  .stat .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Status breakdown */
+  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .status-bar-track { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .status-bar-fill { height: 100%; border-radius: 3px; }
+  .status-name { min-width: 160px; color: var(--muted); }
+  .status-count { min-width: 40px; text-align: right; font-weight: 600; }
+
+  .badge-sm { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+
+  .logout-btn { font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--border); padding: 5px 12px; border-radius: 20px; cursor: pointer; }
+  .logout-btn:hover { background: var(--bg); }
+
+  @media (max-width: 480px) {
+    .main { padding: 1rem 0.75rem; }
+    .status-name { min-width: 120px; font-size: 12px; }
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">Admin Panel <span>| ระบบติดตามงานซ่อม</span></div>
+  <a href="index.html" class="back-link">← หน้าค้นหา</a>
+</div>
+
+<div class="main">
+
+  <!-- Login -->
+  <div id="login-screen">
+    <div class="login-box">
+      <h2>🔐 เข้าสู่ระบบ Admin</h2>
+      <p>สำหรับผู้ดูแลระบบเท่านั้น</p>
+      <div class="field">
+        <label>รหัสผ่าน</label>
+        <input type="password" id="pwd-input" placeholder="ใส่รหัสผ่าน" />
+      </div>
+      <button class="btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+      <div class="err-msg" id="login-err"></div>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="admin-panel">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+      <div style="font-size:15px; font-weight:600;">ยินดีต้อนรับ Admin</div>
+      <button class="logout-btn" onclick="doLogout()">ออกจากระบบ</button>
+    </div>
+
+    <!-- Stats -->
+    <div id="stats-section" class="section">
+      <h3>ภาพรวมฐานข้อมูล</h3>
+      <div class="sub" id="last-upload-text">กำลังโหลด...</div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div id="status-breakdown"></div>
+    </div>
+
+    <!-- Upload -->
+    <div class="section">
+      <h3>อัปโหลดข้อมูลใหม่</h3>
+      <div class="sub">อัปโหลดไฟล์ Excel เพื่ออัปเดตสถานะงานซ่อมทั้งหมด (upsert ตาม Job No)</div>
+      <div class="upload-zone" id="upload-zone"
+        onclick="document.getElementById('file-in').click()"
+        ondragover="ev=>(ev.preventDefault(),ev.currentTarget.classList.add('drag'))"
+        ondragleave="ev=>ev.currentTarget.classList.remove('drag')"
+        ondrop="handleDrop(event)">
+        <div class="icon">📊</div>
+        <div class="main-text">คลิกหรือลากไฟล์มาวางที่นี่</div>
+        <div class="sub-text">รองรับ .xlsx และ .xls</div>
+      </div>
+      <input type="file" id="file-in" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
+      <div class="progress-wrap" id="prog-wrap">
+        <div class="progress-label" id="prog-label">กำลังประมวลผล...</div>
+        <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      </div>
+      <div class="msg" id="upload-msg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://etggtjqnkyzjqmiwokth.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
+const ADMIN_PASSWORD = 'ExPert2003Q#$P';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STATUS_COLORS = {
+  'เสร็จและจัดส่งแล้ว':'#2e6b10','งานเสร็จรอมารับ':'#0a6644',
+  'กำลังซ่อม':'#1254a0','เทียบเวลา':'#1254a0','กำลังซ่อม+ส่งทำ':'#1254a0',
+  'รอคิวช่าง':'#8a4a00','รอเช็ค':'#7a4500','สั่งแล้วรออะไหล่':'#7a4500',
+  'ส่งทำ':'#7a4500','รอหาอะหลั่ย':'#7a4500','รอ Confirm':'#7a4500',
+  'ไม่ซ่อมรับคืนแล้ว':'#777','รอคืนลูกค้าไม่ซ่อม':'#777','รอคืนสาขา':'#777',
+  'เก็บที่ออฟฟิศ':'#777','คืนไม่มีอะไหล่':'#9b2222','ติดต่อไม่ได้':'#9b2222',
+};
+
+function doLogin() {
+  const v = document.getElementById('pwd-input').value;
+  if (v === ADMIN_PASSWORD) {
+    sessionStorage.setItem('admin_ok','1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    loadStats();
+  } else {
+    document.getElementById('login-err').textContent = 'รหัสผ่านไม่ถูกต้อง';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('admin_ok');
+  location.reload();
+}
+
+document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+if (sessionStorage.getItem('admin_ok') === '1') {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+  loadStats();
+}
+
+async function loadStats() {
+  const { count } = await sb.from('repair_jobs').select('*', { count: 'exact', head: true });
+  const { data: meta } = await sb.from('upload_meta').select('*').eq('key','last_upload').single();
+  const lastUpload = meta ? meta.value : null;
+
+  document.getElementById('last-upload-text').textContent =
+    lastUpload ? `อัปเดตล่าสุด: ${lastUpload}` : 'ยังไม่เคยอัปโหลดข้อมูล';
+
+  const { data: rows } = await sb.from('repair_jobs').select('finaldesc');
+  const countMap = {};
+  (rows || []).forEach(r => { countMap[r.finaldesc] = (countMap[r.finaldesc]||0)+1; });
+
+  const activeStatuses = ['กำลังซ่อม','รอคิวช่าง','รอเช็ค','สั่งแล้วรออะไหล่','ส่งทำ','รอหาอะหลั่ย','รอ Confirm','เทียบเวลา','กำลังซ่อม+ส่งทำ','งานเสร็จรอมารับ','ส่งทำ'];
+  const activeCount = activeStatuses.reduce((s,k) => s + (countMap[k]||0), 0);
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat"><div class="n">${(count||0).toLocaleString()}</div><div class="l">งานทั้งหมด</div></div>
+    <div class="stat"><div class="n">${activeCount}</div><div class="l">กำลังดำเนินการ</div></div>
+    <div class="stat"><div class="n">${countMap['เสร็จและจัดส่งแล้ว']||0}</div><div class="l">เสร็จและจัดส่งแล้ว</div></div>
+  `;
+
+  const sorted = Object.entries(countMap).sort((a,b)=>b[1]-a[1]);
+  const total = count || 1;
+  document.getElementById('status-breakdown').innerHTML = sorted.map(([s, c]) => {
+    const pct = Math.round(c/total*100);
+    const col = STATUS_COLORS[s] || '#aaa';
+    return `<div class="status-row">
+      <div class="status-name">${s}</div>
+      <div class="status-bar-track"><div class="status-bar-fill" style="width:${pct}%;background:${col};"></div></div>
+      <div class="status-count">${c.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+}
+
+const FIELD_ALIASES = {
+  finaldesc: ['finaldesc','สถานะ','status'],
+  shop_no: ['shop_no','shopno','สาขา','shop no'],
+  jobno: ['jobno','job no','job_no','เลขที่งาน','job number'],
+  jobdate: ['jobdate','วันที่รับงาน','วันที่'],
+  category: ['category','รายละเอียดนาฬิกา','ประเภท','รายละเอียด'],
+  serialno: ['serialno','serial','serial no','เลข serial'],
+  estimate: ['estimate','ราคา','ค่าซ่อม','ราคาประเมิน'],
+  clientname: ['clientname','ชื่อลูกค้า','ลูกค้า','ชื่อ'],
+  phone: ['phone','โทรศัพท์','เบอร์','เบอร์โทร'],
+  actdesc1: ['actdesc1','รายการซ่อม 1','รายการ1'],
+  actdesc2: ['actdesc2','รายการซ่อม 2','รายการ2'],
+  finishdate: ['finishdate','วันที่เสร็จ','วันเสร็จ'],
+};
+
+async function handleFile(file) {
+  if (!file) return;
+  showProg(true, 'กำลังอ่านไฟล์...', 10);
+  showMsg(false);
+
+  let rows;
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  } catch(err) {
+    showProg(false);
+    showMsg(true, `❌ อ่านไฟล์ไม่ได้: ${err.message}`, 'error');
+    return;
+  }
+
+  showProg(true, `กำลัง parse ${rows.length.toLocaleString()} แถว...`, 35);
+
+  const colMap = {};
+  if (rows.length > 0) {
+    const sample = rows[0];
+    for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+      const keys = Object.keys(sample);
+      colMap[field] = keys.find(k => aliases.some(a => k.toLowerCase().trim() === a || k.toLowerCase().trim().includes(a))) || null;
+    }
+  }
+
+  function g(row, field) {
+    const k = colMap[field]; if (!k) return null;
+    const v = row[k];
+    if (v === null || v === undefined || v === '') return null;
+    if (v instanceof Date) return v.toLocaleDateString('th-TH');
+    return String(v).trim() || null;
+  }
+
+  const records = rows
+    .map(row => ({
+      jobno: g(row,'jobno'), finaldesc: g(row,'finaldesc'),
+      shop_no: g(row,'shop_no'), jobdate: g(row,'jobdate'),
+      category: g(row,'category'), serialno: g(row,'serialno'),
+      estimate: g(row,'estimate'), clientname: g(row,'clientname'),
+      phone: g(row,'phone'), actdesc1: g(row,'actdesc1'),
+      actdesc2: g(row,'actdesc2'), finishdate: g(row,'finishdate'),
+    }))
+    .filter(r => r.jobno);
+
+  showProg(true, `กำลังบันทึก ${records.length.toLocaleString()} รายการเข้า Supabase...`, 60);
+
+  const BATCH = 500;
+  let uploaded = 0;
+  for (let i = 0; i < records.length; i += BATCH) {
+    const chunk = records.slice(i, i + BATCH);
+    const { error } = await sb.from('repair_jobs').upsert(chunk, { onConflict: 'jobno' });
+    if (error) {
+      showProg(false);
+      showMsg(true, `❌ บันทึกข้อมูลไม่สำเร็จ: ${error.message}`, 'error');
+      return;
+    }
+    uploaded += chunk.length;
+    showProg(true, `กำลังบันทึก... ${uploaded.toLocaleString()} / ${records.length.toLocaleString()}`, 60 + Math.round(uploaded/records.length*35));
+  }
+
+  const now = new Date().toLocaleString('th-TH', { timeZone:'Asia/Bangkok' });
+  await sb.from('upload_meta').upsert({ key:'last_upload', value: now }, { onConflict:'key' });
+
+  showProg(true, 'เสร็จสิ้น!', 100);
+  setTimeout(() => showProg(false), 800);
+  showMsg(true, `✅ อัปโหลดสำเร็จ — บันทึก ${records.length.toLocaleString()} รายการ เมื่อ ${now}`, 'success');
+  loadStats();
+}
+
+function showProg(visible, label='', pct=0) {
+  const wrap = document.getElementById('prog-wrap');
+  wrap.style.display = visible ? 'block' : 'none';
+  if (visible) {
+    document.getElementById('prog-label').textContent = label;
+    document.getElementById('prog-fill').style.width = pct + '%';
+  }
+}
+
+function showMsg(visible, text='', type='success') {
+  const el = document.getElementById('upload-msg');
+  el.style.display = visible ? 'block' : 'none';
+  if (visible) { el.textContent = text; el.className = `msg ${type}`; }
+}
+</script>
+</body>
+</html>
