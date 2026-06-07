@@ -197,11 +197,21 @@ async function loadStats() {
   document.getElementById('last-upload-text').textContent =
     lastUpload ? `อัปเดตล่าสุด: ${lastUpload}` : 'ยังไม่เคยอัปโหลดข้อมูล';
 
-  const { data: rows } = await sb.from('repair_jobs').select('finaldesc');
+  // ดึง finaldesc แบบ pagination เพื่อไม่ให้ timeout
   const countMap = {};
-  (rows || []).forEach(r => { countMap[r.finaldesc] = (countMap[r.finaldesc]||0)+1; });
+  const PAGE = 1000;
+  let page = 0;
+  while (true) {
+    const { data: rows, error } = await sb.from('repair_jobs')
+      .select('finaldesc')
+      .range(page * PAGE, (page + 1) * PAGE - 1);
+    if (error || !rows || rows.length === 0) break;
+    rows.forEach(r => { countMap[r.finaldesc] = (countMap[r.finaldesc]||0)+1; });
+    if (rows.length < PAGE) break;
+    page++;
+  }
 
-  const activeStatuses = ['กำลังซ่อม','รอคิวช่าง','รอเช็ค','สั่งแล้วรออะไหล่','ส่งทำ','รอหาอะหลั่ย','รอ Confirm','เทียบเวลา','กำลังซ่อม+ส่งทำ','งานเสร็จรอมารับ','ส่งทำ'];
+  const activeStatuses = ['กำลังซ่อม','รอคิวช่าง','รอเช็ค','สั่งแล้วรออะไหล่','ส่งทำ','รอหาอะหลั่ย','รอ Confirm','เทียบเวลา','กำลังซ่อม+ส่งทำ','งานเสร็จรอมารับ'];
   const activeCount = activeStatuses.reduce((s,k) => s + (countMap[k]||0), 0);
 
   document.getElementById('stats-grid').innerHTML = `
@@ -294,7 +304,7 @@ async function handleFile(file) {
 
   showProg(true, `กำลังบันทึก ${records.length.toLocaleString()} รายการเข้า Supabase...`, 60);
 
-  const BATCH = 500;
+  const BATCH = 100;
   let uploaded = 0;
   for (let i = 0; i < records.length; i += BATCH) {
     const chunk = records.slice(i, i + BATCH);
@@ -306,6 +316,8 @@ async function handleFile(file) {
     }
     uploaded += chunk.length;
     showProg(true, `กำลังบันทึก... ${uploaded.toLocaleString()} / ${records.length.toLocaleString()}`, 60 + Math.round(uploaded/records.length*35));
+    // หน่วงเล็กน้อยเพื่อไม่ให้ Supabase throttle
+    await new Promise(r => setTimeout(r, 50));
   }
 
   const now = new Date().toLocaleString('th-TH', { timeZone:'Asia/Bangkok' });
