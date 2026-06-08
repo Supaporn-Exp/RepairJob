@@ -112,17 +112,17 @@
         <label>เลือกสาขา</label>
         <select id="shop-select">
           <option value="">— กรุณาเลือกสาขา —</option>
-          <option value="0">Central ปิ่นเกล้า</option>
-          <option value="1">Central ลาดพร้าว</option>
-          <option value="2">Future Park Rangsit</option>
-          <option value="3">Fashion Island</option>
-          <option value="4">Central World</option>
-          <option value="5">Mega Bangna</option>
-          <option value="6">Eastville</option>
-          <option value="7">Icon Siam</option>
-          <option value="8">WestGate</option>
-          <option value="9">Central Park</option>
-          <option value="10">สำนักงานกลาง</option>
+          <option value="02">Central ปิ่นเกล้า</option>
+          <option value="03">Central ลาดพร้าว</option>
+          <option value="05">Future Park Rangsit</option>
+          <option value="09">Fashion Island</option>
+          <option value="12">Central World</option>
+          <option value="16">Mega Bangna</option>
+          <option value="21">Eastville</option>
+          <option value="22">Icon Siam</option>
+          <option value="23">WestGate</option>
+          <option value="25">Central Park</option>
+          <option value="00">สำนักงานกลาง</option>
         </select>
       </div>
       <div class="field">
@@ -181,17 +181,17 @@ const SUPABASE_ANON_KEY = 'sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
 
 // รหัสผ่านแต่ละสาขา shop_no: password
 const BRANCH_PASSWORDS = {
-  '0': '@Pin02',
-  '1': '@Lad03',
-  '2': '@Fut05',
-  '3': '@Fas09',
-  '4': '@Wor12',
-  '5': '@Meg16',
-  '6': '@Eas21',
-  '7': '@Ico22',
-  '8': '@Wes23',
-  '9': '@Par25',
-  '10': '@Off00',
+  '02': '@Pin02',
+  '03': '@Lad03',
+  '05': '@Fut05',
+  '09': '@Fas09',
+  '12': '@Wor12',
+  '16': '@Meg16',
+  '21': '@Eas21',
+  '22': '@Ico22',
+  '23': '@Wes23',
+  '25': '@Par25',
+  '00': '@Off00',
 };
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -241,8 +241,9 @@ function doStaffLogin() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('staff-panel').style.display = 'block';
   document.getElementById('logout-btn').style.display = 'block';
-  document.getElementById('branch-badge').textContent = `Shop_no${String(shop).padStart(2,'0')}`;
-  document.getElementById('panel-title').textContent = `งานซ่อม Shop_no${String(shop).padStart(2,'0')}`;
+  const branchName = document.getElementById('shop-select').options[document.getElementById('shop-select').selectedIndex].text;
+  document.getElementById('branch-badge').textContent = branchName;
+  document.getElementById('panel-title').textContent = `งานซ่อม ${branchName}`;
 
   loadJobs();
 }
@@ -261,8 +262,10 @@ if (savedShop) {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('staff-panel').style.display = 'block';
   document.getElementById('logout-btn').style.display = 'block';
-  document.getElementById('branch-badge').textContent = `Shop_no${String(savedShop).padStart(2,'0')}`;
-  document.getElementById('panel-title').textContent = `งานซ่อม Shop_no${String(savedShop).padStart(2,'0')}`;
+  const BRANCH_NAMES = {'02':'Central ปิ่นเกล้า','03':'Central ลาดพร้าว','05':'Future Park Rangsit','09':'Fashion Island','12':'Central World','16':'Mega Bangna','21':'Eastville','22':'Icon Siam','23':'WestGate','25':'Central Park','00':'สำนักงานกลาง'};
+  const savedName = BRANCH_NAMES[savedShop] || `สาขา ${savedShop}`;
+  document.getElementById('branch-badge').textContent = savedName;
+  document.getElementById('panel-title').textContent = `งานซ่อม ${savedName}`;
   loadJobs();
 }
 
