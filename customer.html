@@ -178,7 +178,7 @@ function renderCard(r) {
     ['วันที่รับงาน', fmt(r.jobdate)],
     ['วันนัดลูกค้า', fmt(r.appointdate)],
     ['วันที่ตกลงซ่อม', fmt(r.confirmdate)],
-    ['วันที่เสร็จ', fmt(r.finishdate)],
+    ['วันที่ส่งมอบ', fmt(r.finishdate)],
     ['ราคาประเมิน', fmtMoney(r.estimate)],
     ['ประกัน', warranty],
   ].filter(([,v]) => v && v !== '—' && v !== null);
