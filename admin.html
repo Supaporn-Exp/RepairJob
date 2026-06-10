@@ -303,12 +303,17 @@ async function handleFile(file) {
 
   const records = rows
     .map(row => ({
-      jobno: g(row,'jobno'), finaldesc: g(row,'finaldesc'),
-      shop_no: g(row,'shop_no'), jobdate: g(row,'jobdate'),
-      category: g(row,'category'), serialno: g(row,'serialno'),
-      estimate: g(row,'estimate'), clientname: g(row,'clientname'),
-      phone: g(row,'phone'), actdesc1: g(row,'actdesc1'),
-      actdesc2: g(row,'actdesc2'), finishdate: g(row,'finishdate'),
+      jobno:       g(row,'jobno'),       finaldesc:   g(row,'finaldesc'),
+      shop_no:     g(row,'shop_no'),     jobdate:     g(row,'jobdate'),
+      iswarranty:  g(row,'iswarranty'),  category:    g(row,'category'),
+      serialno:    g(row,'serialno'),    estimate:    g(row,'estimate'),
+      appointdate: g(row,'appointdate'), confirmdate: g(row,'confirmdate'),
+      goodamt:     g(row,'goodamt'),     clientname:  g(row,'clientname'),
+      phone:       g(row,'phone'),       actdesc1:    g(row,'actdesc1'),
+      actdesc2:    g(row,'actdesc2'),    receiver:    g(row,'receiver'),
+      techman:     g(row,'techman'),     finishdate:  g(row,'finishdate'),
+      remark1:     g(row,'remark1'),     remark2:     g(row,'remark2'),
+      transto:     g(row,'transto'),     finalcase:   g(row,'finalcase'),
     }))
     .filter(r => r.jobno);
 
