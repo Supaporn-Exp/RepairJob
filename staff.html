@@ -359,7 +359,7 @@ function openModal(jobno) {
     ['วันที่รับงาน', r.jobdate],       ['วันนัดลูกค้า', r.appointdate],
     ['วันที่ตกลงซ่อม', r.confirmdate], ['วันที่เสร็จ', r.finishdate],
     ['Serial No.', r.serialno],        ['ราคาประเมิน', fmtMoney(r.estimate)],
-    ['ค่าอะไหล่', fmtMoney(r.goodamt)],['ช่างผู้รับผิดชอบ', r.techman],
+    ['ช่างผู้รับผิดชอบ', r.techman],
     ['ผู้รับงาน', r.receiver],         ['ประกัน', warranty],
   ].filter(([,v]) => v);
   document.getElementById('m-grid').innerHTML = details.map(([k,v]) => `<div class="ik">${k}</div><div class="iv">${v}</div>`).join('');
