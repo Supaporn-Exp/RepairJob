@@ -150,9 +150,9 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://etggtjqnkyzjqmiwokth.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
-const ADMIN_PASSWORD = 'ExPert2003Q#$P';
+const SUPABASE_URL = 'REPLACE_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'REPLACE_SUPABASE_ANON_KEY';
+const ADMIN_PASSWORD = 'REPLACE_ADMIN_PASSWORD';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const STATUS_COLORS = {
@@ -241,18 +241,28 @@ function handleDrop(e) {
 }
 
 const FIELD_ALIASES = {
-  finaldesc: ['finaldesc','สถานะ','status'],
-  shop_no: ['shop_no','shopno','สาขา','shop no'],
-  jobno: ['jobno','job no','job_no','เลขที่งาน','job number'],
-  jobdate: ['jobdate','วันที่รับงาน','วันที่'],
-  category: ['category','รายละเอียดนาฬิกา','ประเภท','รายละเอียด'],
-  serialno: ['serialno','serial','serial no','เลข serial'],
-  estimate: ['estimate','ราคา','ค่าซ่อม','ราคาประเมิน'],
-  clientname: ['clientname','ชื่อลูกค้า','ลูกค้า','ชื่อ'],
-  phone: ['phone','โทรศัพท์','เบอร์','เบอร์โทร'],
-  actdesc1: ['actdesc1','รายการซ่อม 1','รายการ1'],
-  actdesc2: ['actdesc2','รายการซ่อม 2','รายการ2'],
-  finishdate: ['finishdate','วันที่เสร็จ','วันเสร็จ'],
+  finalcase:   ['finalcase'],
+  finaldesc:   ['finaldesc','สถานะ','status'],
+  shop_no:     ['shop_no','shopno','สาขา','shop no'],
+  jobno:       ['jobno','job no','job_no','เลขที่งาน','job number'],
+  jobdate:     ['jobdate','วันที่รับงาน','วันที่'],
+  iswarranty:  ['iswarranty','ประกัน','warranty'],
+  category:    ['category','รายละเอียดนาฬิกา','ประเภท','รายละเอียด'],
+  serialno:    ['serialno','serial','serial no','เลข serial'],
+  estimate:    ['estimate','ราคา','ค่าซ่อม','ราคาประเมิน'],
+  appointdate: ['appointdate','วันนัด','วันที่นัด'],
+  confirmdate: ['confirmdate','วันตกลง','วันที่ตกลง'],
+  goodamt:     ['goodamt','ค่าอะไหล่','อะไหล่'],
+  clientname:  ['clientname','ชื่อลูกค้า','ลูกค้า','ชื่อ'],
+  phone:       ['phone','โทรศัพท์','เบอร์','เบอร์โทร'],
+  actdesc1:    ['actdesc1','รายการซ่อม 1','รายการ1'],
+  actdesc2:    ['actdesc2','รายการซ่อม 2','รายการ2'],
+  receiver:    ['receiver','ผู้รับงาน'],
+  techman:     ['techman','ช่าง'],
+  finishdate:  ['finishdate','วันที่เสร็จ','วันเสร็จ'],
+  remark1:     ['remark1','หมายเหตุ1','หมายเหตุ'],
+  remark2:     ['remark2','หมายเหตุ2'],
+  transto:     ['transto','ส่งไปที่'],
 };
 
 async function handleFile(file) {

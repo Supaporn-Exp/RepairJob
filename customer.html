@@ -90,8 +90,8 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://etggtjqnkyzjqmiwokth.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
+const SUPABASE_URL = 'REPLACE_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'REPLACE_SUPABASE_ANON_KEY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const STATUS_STYLE = {
@@ -172,12 +172,16 @@ async function doSearch() {
 function renderCard(r) {
   const st = STATUS_STYLE[r.finaldesc] || { bg:'#f0eeea', color:'#666' };
   const desc = STATUS_DESC[r.finaldesc] || '';
+  const warranty = r.iswarranty === 'true' || r.iswarranty === true ? '✅ งานประกัน' : null;
   const details = [
     ['Job No', r.jobno],
     ['วันที่รับงาน', fmt(r.jobdate)],
+    ['วันนัดลูกค้า', fmt(r.appointdate)],
+    ['วันที่ตกลงซ่อม', fmt(r.confirmdate)],
     ['วันที่เสร็จ', fmt(r.finishdate)],
     ['ราคาประเมิน', fmtMoney(r.estimate)],
-  ].filter(([,v]) => v && v !== '—');
+    ['ประกัน', warranty],
+  ].filter(([,v]) => v && v !== '—' && v !== null);
   const rep = [r.actdesc1, r.actdesc2].filter(Boolean).join(' · ');
 
   return `
