@@ -229,6 +229,14 @@ tbody tr:hover td{background:var(--bg);}
           <div class="svc-btn" onclick="toggleSvc(this,'other')"><i class="ti ti-dots" aria-hidden="true"></i><div class="svc-th">อื่นๆ</div><div class="svc-en">Others</div></div>
         </div>
         <input type="text" id="qs-other-text" placeholder="ระบุรายการอื่นๆ..." style="display:none;width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);margin-bottom:10px;outline:none;"/>
+        <div class="sec-label">รูปภาพนาฬิกา / Watch photos</div>
+        <div class="photo-zone" onclick="document.getElementById('qs-photo-input').click()">
+          <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;" aria-hidden="true"></i>
+          <div style="font-size:12px;font-weight:500;">ถ่ายรูปนาฬิกา / Take photo</div>
+          <div style="font-size:11px;color:var(--muted);">ด้านหน้า · ด้านหลัง · จุดเสียหาย</div>
+        </div>
+        <input type="file" id="qs-photo-input" accept="image/*" multiple capture="environment" style="display:none" onchange="addPhotos(this,'qs-photo-grid')"/>
+        <div class="photo-grid" id="qs-photo-grid"></div>
         <div class="sec-label">ราคา / Price</div>
         <div class="price-wrap"><span class="price-sym">฿</span><input class="price-input" type="number" id="qs-price" placeholder="0" inputmode="numeric"/></div>
         <div class="sec-label">ลายเซ็นลูกค้า / Customer signature</div>
@@ -483,7 +491,23 @@ function saveQS(){
   const docno=document.getElementById('qs-docno').textContent;
   const k='QS-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;updateDocNos();
   const sumDiv=document.getElementById('qs-sum');
-  sumDiv.innerHTML=`<div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">สรุปงาน / Summary</div><div class="sum-row"><span class="sk">เลขที่</span><span class="sv">${docno}</span></div><div class="sum-row"><span class="sk">ลูกค้า</span><span class="sv">${name}</span></div><div class="sum-row"><span class="sk">งานที่ทำ</span><span class="sv">${svcList}</span></div><div class="sum-row"><span class="sk">ราคา</span><span class="sv" style="color:#27500A;">฿${Number(price).toLocaleString('th-TH')}</span></div><div class="sum-row"><span class="sk">ลายเซ็น</span><span class="sv" style="color:#27500A;">เซ็นแล้ว ✓</span></div><div style="margin-top:8px;background:#EAF3DE;border-radius:8px;padding:8px 10px;font-size:12px;color:#27500A;">บันทึกสำเร็จ ✓</div>`;
+  const qrData=encodeURIComponent(`QS:${docno}|${name}|${svcList}|${price}`);
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${qrData}`;
+  sumDiv.innerHTML=`
+    <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">สรุปงาน / Summary</div>
+    <div class="sum-row"><span class="sk">เลขที่</span><span class="sv">${docno}</span></div>
+    <div class="sum-row"><span class="sk">ลูกค้า</span><span class="sv">${name}</span></div>
+    <div class="sum-row"><span class="sk">งานที่ทำ</span><span class="sv">${svcList}</span></div>
+    <div class="sum-row"><span class="sk">ราคา</span><span class="sv" style="color:#27500A;">฿${Number(price).toLocaleString('th-TH')}</span></div>
+    <div class="sum-row"><span class="sk">ลายเซ็น</span><span class="sv" style="color:#27500A;">เซ็นแล้ว ✓</span></div>
+    <div style="margin-top:10px;background:#EAF3DE;border-radius:8px;padding:8px 12px;font-size:12px;color:#27500A;text-align:center;">บันทึกสำเร็จ ✓</div>
+    <div style="margin-top:12px;background:#f5f4f0;border-radius:10px;padding:14px;text-align:center;border:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:#1a1a18;">QR Code หลักฐานรับนาฬิกา</div>
+      <img src="${qrUrl}" alt="QR ${docno}" style="width:160px;height:160px;display:block;margin:0 auto 10px;border-radius:8px;border:1px solid var(--border);"/>
+      <div style="font-size:14px;font-weight:600;color:#1a1a18;">${docno}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">ให้ลูกค้าสแกนหรือถ่ายรูปเก็บไว้</div>
+      <div style="font-size:11px;color:var(--muted);">แสดง QR นี้เมื่อมารับนาฬิกา</div>
+    </div>`;
   sumDiv.classList.add('show');
   const btn=document.getElementById('qs-save');btn.innerHTML='<i class="ti ti-check" style="font-size:15px;" aria-hidden="true"></i> บันทึกแล้ว!';btn.disabled=true;
 }
