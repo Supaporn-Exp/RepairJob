@@ -3,76 +3,91 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ทดสอบถ่ายรูป</title>
+<title>ทดสอบถ่ายรูป v2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:sans-serif;padding:1rem;background:#f5f4f0;}
-.box{background:#fff;border-radius:12px;padding:1rem;margin-bottom:1rem;border:1px solid #e2e0d8;}
-h3{font-size:14px;margin-bottom:8px;color:#666;}
-.zone{border:2px dashed #ccc;border-radius:8px;padding:1.5rem;text-align:center;cursor:pointer;margin-bottom:8px;background:#fff;}
-.zone:active{background:#f0f0f0;}
-button{width:100%;padding:12px;border-radius:8px;border:none;background:#1a1a18;color:#fff;font-size:15px;cursor:pointer;margin-bottom:8px;}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
-.thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;}
-.thumb img{width:100%;height:100%;object-fit:cover;}
-#log{background:#000;color:#0f0;padding:10px;border-radius:8px;font-size:12px;font-family:monospace;min-height:80px;white-space:pre-wrap;}
+.box{background:#fff;border-radius:12px;padding:1rem;margin-bottom:1rem;border:1px solid #ddd;}
+h3{font-size:13px;color:#666;margin-bottom:8px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+/* วิธี A: input ใน label display:none */
+.btn-a{border:2px dashed #aaa;border-radius:8px;padding:14px;text-align:center;cursor:pointer;display:block;background:#fff;}
+/* วิธี B: input ขนาด 0 opacity 0 แต่ไม่ display:none */
+.btn-b-wrap{position:relative;border:2px dashed #aaa;border-radius:8px;padding:14px;text-align:center;cursor:pointer;overflow:hidden;}
+.btn-b-input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+/* วิธี C: แสดง input ตรงๆ */
+.native-input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;}
+#log{background:#111;color:#0f0;padding:10px;border-radius:8px;font-size:11px;font-family:monospace;min-height:60px;white-space:pre-wrap;word-break:break-all;}
+.thumb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;}
+.thumb-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;}
 </style>
 </head>
 <body>
 
 <div class="box">
-<h3>วิธี 1 — label + input (แนะนำ)</h3>
-<label for="f1">
-<div class="zone">📷 กดที่นี่เพื่อถ่ายรูป (label)</div>
-</label>
-<input type="file" id="f1" accept="image/*" multiple style="display:none" onchange="showPhotos(this,'g1');log('f1 changed: '+this.files.length+' files')">
-<div class="grid" id="g1"></div>
+<h3>A: input[display:none] ใน label</h3>
+<div class="grid">
+  <label class="btn-a">
+    📷 ถ่ายรูป
+    <input type="file" accept="image/*" capture="camera" style="display:none" onchange="show(this,'gA')">
+  </label>
+  <label class="btn-a">
+    🖼 คลัง
+    <input type="file" accept="image/*" style="display:none" onchange="show(this,'gA')">
+  </label>
+</div>
+<div class="thumb-grid" id="gA"></div>
 </div>
 
 <div class="box">
-<h3>วิธี 2 — input แสดงตรงๆ ไม่ซ่อน</h3>
-<input type="file" id="f2" accept="image/*" multiple onchange="showPhotos(this,'g2');log('f2 changed: '+this.files.length+' files')" style="margin-bottom:8px;width:100%;">
-<div class="grid" id="g2"></div>
+<h3>B: input opacity:0 ทับ div</h3>
+<div class="grid">
+  <div class="btn-b-wrap">
+    📷 ถ่ายรูป
+    <input class="btn-b-input" type="file" accept="image/*" capture="camera" onchange="show(this,'gB')">
+  </div>
+  <div class="btn-b-wrap">
+    🖼 คลัง
+    <input class="btn-b-input" type="file" accept="image/*" onchange="show(this,'gB')">
+  </div>
+</div>
+<div class="thumb-grid" id="gB"></div>
 </div>
 
 <div class="box">
-<h3>วิธี 3 — button onclick → input.click()</h3>
-<button onclick="document.getElementById('f3').click();log('f3 button clicked')">📷 กดปุ่มถ่ายรูป</button>
-<input type="file" id="f3" accept="image/*" multiple style="display:none" onchange="showPhotos(this,'g3');log('f3 changed: '+this.files.length+' files')">
-<div class="grid" id="g3"></div>
-</div>
-
-<div class="box">
-<h3>วิธี 4 — input opacity:0 ทับปุ่ม</h3>
-<div style="position:relative;display:inline-block;width:100%;">
-<div class="zone">📷 กดที่นี่ (input ทับ)</div>
-<input type="file" id="f4" accept="image/*" multiple onchange="showPhotos(this,'g4');log('f4 changed: '+this.files.length+' files')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
-</div>
-<div class="grid" id="g4"></div>
+<h3>C: input แสดงตรงๆ (native)</h3>
+<input class="native-input" type="file" accept="image/*" capture="camera" onchange="show(this,'gC')">
+<div class="thumb-grid" id="gC"></div>
 </div>
 
 <div class="box">
 <h3>Log</h3>
-<div id="log">รอการทดสอบ...</div>
+<div id="log">รอผล...</div>
 </div>
 
 <script>
-function log(msg){
-  const el=document.getElementById('log');
-  el.textContent+='\n'+new Date().toLocaleTimeString()+' '+msg;
-}
-function showPhotos(input,gridId){
-  const grid=document.getElementById(gridId);
-  Array.from(input.files).forEach(file=>{
-    const div=document.createElement('div');div.className='thumb';
+document.querySelectorAll('label,div.btn-b-wrap').forEach(el=>{
+  el.addEventListener('click',()=>log('clicked: '+el.className.substring(0,20)));
+});
+document.querySelectorAll('input[type=file]').forEach(inp=>{
+  inp.addEventListener('change',()=>log('input changed files:'+inp.files.length));
+});
+function show(input,gid){
+  log('show called, files:'+input.files.length);
+  const g=document.getElementById(gid);
+  Array.from(input.files).forEach(f=>{
     const img=document.createElement('img');
-    const reader=new FileReader();
-    reader.onload=e=>{img.src=e.target.result;};
-    reader.readAsDataURL(file);
-    div.appendChild(img);grid.appendChild(div);
+    const r=new FileReader();
+    r.onload=e=>img.src=e.target.result;
+    r.readAsDataURL(f);
+    g.appendChild(img);
   });
 }
-log('Page loaded — UA: '+navigator.userAgent.substring(0,80));
+function log(msg){
+  const el=document.getElementById('log');
+  el.textContent=new Date().toLocaleTimeString()+' '+msg+'\n'+el.textContent;
+}
+log('loaded | '+navigator.userAgent.substring(0,60));
 </script>
 </body>
 </html>
