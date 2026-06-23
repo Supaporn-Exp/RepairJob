@@ -264,19 +264,19 @@ tbody tr:hover td{background:var(--bg);}
         <input type="text" id="qs-other-text" placeholder="ระบุรายการอื่นๆ..." style="display:none;width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);margin-bottom:10px;outline:none;"/>
         <div class="sec-label">รูปภาพนาฬิกา / Watch photos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <label for="qs-photo-camera" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
+          <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">ถ่ายรูป</div>
             <div style="font-size:10px;color:var(--muted);">Take photo</div>
+            <input type="file" accept="image/*" capture="camera" multiple style="display:none;" onchange="addPhotos(this,'qs-photo-grid')"/>
           </label>
-          <label for="qs-photo-gallery" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
+          <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-photo" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">เลือกรูป</div>
             <div style="font-size:10px;color:var(--muted);">From gallery</div>
+            <input type="file" accept="image/*" multiple style="display:none;" onchange="addPhotos(this,'qs-photo-grid')"/>
           </label>
         </div>
-        <input type="file" id="qs-photo-camera" accept="image/*" capture="camera" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="addPhotos(this,'qs-photo-grid')"/>
-        <input type="file" id="qs-photo-gallery" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="addPhotos(this,'qs-photo-grid')"/>
         <div class="photo-grid" id="qs-photo-grid"></div>
         <div class="sec-label">ราคา / Price</div>
         <div class="price-wrap"><span class="price-sym">฿</span><input class="price-input" type="number" id="qs-price" placeholder="0" inputmode="numeric"/></div>
@@ -351,19 +351,19 @@ tbody tr:hover td{background:var(--bg);}
         </div>
         <div class="sec-label">รูปภาพ / Photos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <label for="wso-photo-camera" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
+          <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">ถ่ายรูป</div>
             <div style="font-size:10px;color:var(--muted);">Take photo</div>
+            <input type="file" accept="image/*" capture="camera" multiple style="display:none;" onchange="addPhotos(this,'wso-photo-grid')"/>
           </label>
-          <label for="wso-photo-gallery" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
+          <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-photo" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">เลือกรูป</div>
             <div style="font-size:10px;color:var(--muted);">From gallery</div>
+            <input type="file" accept="image/*" multiple style="display:none;" onchange="addPhotos(this,'wso-photo-grid')"/>
           </label>
         </div>
-        <input type="file" id="wso-photo-camera" accept="image/*" capture="camera" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="addPhotos(this,'wso-photo-grid')"/>
-        <input type="file" id="wso-photo-gallery" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" onchange="addPhotos(this,'wso-photo-grid')"/>
         <div class="photo-grid" id="wso-photo-grid"></div>
         <div class="sec-label">หมายเหตุ / Remarks</div>
         <div class="mic-wrap">
