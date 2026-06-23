@@ -263,12 +263,12 @@ tbody tr:hover td{background:var(--bg);}
         </div>
         <input type="text" id="qs-other-text" placeholder="ระบุรายการอื่นๆ..." style="display:none;width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);margin-bottom:10px;outline:none;"/>
         <div class="sec-label">รูปภาพนาฬิกา / Watch photos</div>
-        <div class="photo-zone" onclick="document.getElementById('qs-photo-input').click()">
+        <label for="qs-photo-input" class="photo-zone" style="display:block;cursor:pointer;">
           <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;" aria-hidden="true"></i>
           <div style="font-size:12px;font-weight:500;">ถ่ายรูปนาฬิกา / Take photo</div>
           <div style="font-size:11px;color:var(--muted);">ด้านหน้า · ด้านหลัง · จุดเสียหาย</div>
-        </div>
-        <input type="file" id="qs-photo-input" accept="image/*" multiple style="display:none" onchange="addPhotos(this,'qs-photo-grid')"/>
+        </label>
+        <input type="file" id="qs-photo-input" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;" onchange="addPhotos(this,'qs-photo-grid')"/>
         <div class="photo-grid" id="qs-photo-grid"></div>
         <div class="sec-label">ราคา / Price</div>
         <div class="price-wrap"><span class="price-sym">฿</span><input class="price-input" type="number" id="qs-price" placeholder="0" inputmode="numeric"/></div>
@@ -342,11 +342,11 @@ tbody tr:hover td{background:var(--bg);}
           <label class="tog"><input type="checkbox" id="wso-sample" checked/><div class="tog-track"></div><div class="tog-thumb"></div></label>
         </div>
         <div class="sec-label">รูปภาพ / Photos</div>
-        <div class="photo-zone" onclick="document.getElementById('wso-photo-input').click()">
+        <label for="wso-photo-input" class="photo-zone" style="display:block;cursor:pointer;">
           <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;" aria-hidden="true"></i>
           <div style="font-size:12px;font-weight:500;">ถ่ายรูปสายเดิม / Take photo</div>
-        </div>
-        <input type="file" id="wso-photo-input" accept="image/*" multiple style="display:none" onchange="addPhotos(this,'wso-photo-grid')"/>
+        </label>
+        <input type="file" id="wso-photo-input" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;" onchange="addPhotos(this,'wso-photo-grid')"/>
         <div class="photo-grid" id="wso-photo-grid"></div>
         <div class="sec-label">หมายเหตุ / Remarks</div>
         <div class="mic-wrap">
