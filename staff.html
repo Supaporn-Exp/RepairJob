@@ -268,7 +268,7 @@ tbody tr:hover td{background:var(--bg);}
           <div style="font-size:12px;font-weight:500;">ถ่ายรูปนาฬิกา / Take photo</div>
           <div style="font-size:11px;color:var(--muted);">ด้านหน้า · ด้านหลัง · จุดเสียหาย</div>
         </div>
-        <input type="file" id="qs-photo-input" accept="image/*" multiple capture="environment" style="display:none" onchange="addPhotos(this,'qs-photo-grid')"/>
+        <input type="file" id="qs-photo-input" accept="image/*" multiple style="display:none" onchange="addPhotos(this,'qs-photo-grid')"/>
         <div class="photo-grid" id="qs-photo-grid"></div>
         <div class="sec-label">ราคา / Price</div>
         <div class="price-wrap"><span class="price-sym">฿</span><input class="price-input" type="number" id="qs-price" placeholder="0" inputmode="numeric"/></div>
@@ -346,7 +346,7 @@ tbody tr:hover td{background:var(--bg);}
           <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;" aria-hidden="true"></i>
           <div style="font-size:12px;font-weight:500;">ถ่ายรูปสายเดิม / Take photo</div>
         </div>
-        <input type="file" id="wso-photo-input" accept="image/*" multiple capture="environment" style="display:none" onchange="addPhotos(this,'wso-photo-grid')"/>
+        <input type="file" id="wso-photo-input" accept="image/*" multiple style="display:none" onchange="addPhotos(this,'wso-photo-grid')"/>
         <div class="photo-grid" id="wso-photo-grid"></div>
         <div class="sec-label">หมายเหตุ / Remarks</div>
         <div class="mic-wrap">
@@ -392,7 +392,9 @@ const SUPABASE_URL='https://etggtjqnkyzjqmiwokth.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
 const BRANCH_PASSWORDS={'02':'@Pin02','03':'@Lad03','05':'@Fut05','09':'@Fas09','12':'@Wor12','16':'@Meg16','21':'@Eas21','22':'@Ico22','23':'@Wes23','25':'@Par25','00':'@Off00'};
 const BRANCH_NAMES={'02':'Central ปิ่นเกล้า','03':'Central ลาดพร้าว','05':'Future Park Rangsit','09':'Fashion Island','12':'Central World','16':'Mega Bangna','21':'Eastville','22':'Icon Siam','23':'WestGate','25':'Central Park','00':'สำนักงานกลาง'};
-const BRANCH_SEQ={};
+function loadSeq(){try{return JSON.parse(localStorage.getItem('expert_seq')||'{}')}catch(e){return {}}}
+function saveSeq(seq){try{localStorage.setItem('expert_seq',JSON.stringify(seq))}catch(e){}}
+const BRANCH_SEQ=loadSeq();
 const BRANDS=['A. Lange & Söhne','Alpina','Audemars Piguet','Ball Watch','Baume & Mercier','Bell & Ross','Blancpain','Breguet','Breitling','Bulgari','Cartier','Casio','Certina','Chopard','Citizen','Corum','Diesel','Doxa','Eterna','Fortis','Frederique Constant','Girard-Perregaux','Grand Seiko','Hamilton','Hublot','IWC','Jaeger-LeCoultre','Longines','Maurice Lacroix','Mido','Montblanc','Movado','Nomos','Omega','Oris','Panerai','Patek Philippe','Piaget','Porsche Design','Rado','Raymond Weil','Richard Mille','Rolex','Seiko','TAG Heuer','Tissot','Tudor','Ulysse Nardin','Vacheron Constantin','Zenith'];
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const STATUS_STYLE={'เสร็จและจัดส่งแล้ว':{bg:'#e8f5e0',color:'#2e6b10'},'งานเสร็จรอมารับ':{bg:'#d4f2e7',color:'#0a6644'},'กำลังซ่อม':{bg:'#ddeeff',color:'#1254a0'},'กำลังซ่อม+ส่งทำ':{bg:'#ddeeff',color:'#1254a0'},'เทียบเวลา':{bg:'#ddeeff',color:'#1254a0'},'รอคิวช่าง':{bg:'#fff0d4',color:'#8a4a00'},'รอเช็ค':{bg:'#fff0d4',color:'#7a4500'},'สั่งแล้วรออะไหล่':{bg:'#fff0d4',color:'#7a4500'},'รอหาอะหลั่ย':{bg:'#fff0d4',color:'#7a4500'},'ส่งทำ':{bg:'#fff0d4',color:'#7a4500'},'รอ Confirm':{bg:'#fff0d4',color:'#7a4500'},'ไม่ซ่อมรับคืนแล้ว':{bg:'#f0eeea',color:'#666'},'รอคืนลูกค้าไม่ซ่อม':{bg:'#f0eeea',color:'#666'},'เก็บที่ออฟฟิศ':{bg:'#f0eeea',color:'#666'},'คืนไม่มีอะไหล่':{bg:'#fde8e8',color:'#9b2222'},'ติดต่อไม่ได้':{bg:'#fde8e8',color:'#9b2222'}};
@@ -522,10 +524,10 @@ function saveQS(){
   const otherTxt=document.getElementById('qs-other-text').value.trim();
   const svcList=[...selectedSvc].map(k=>k==='other'&&otherTxt?otherTxt:SVC_LABELS[k]).join(', ');
   const docno=document.getElementById('qs-docno').textContent;
-  const k='QS-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;updateDocNos();
+  const k='QS-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);updateDocNos();
   const sumDiv=document.getElementById('qs-sum');
-  const qrData=encodeURIComponent(`QS:${docno}|${name}|${svcList}|${price}`);
-  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${qrData}`;
+  const verifyUrl=`${window.location.origin}/verify.html?doc=${encodeURIComponent(docno)}&name=${encodeURIComponent(name)}&svc=${encodeURIComponent(svcList)}&price=${encodeURIComponent(price)}&branch=${encodeURIComponent(BRANCH_NAMES[currentShop]||currentShop)}`;
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(verifyUrl)}`;
   sumDiv.innerHTML=`
     <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">สรุปงาน / Summary</div>
     <div class="sum-row"><span class="sk">เลขที่</span><span class="sv">${docno}</span></div>
@@ -617,7 +619,9 @@ function filterQSBrands(){
   const q=document.getElementById('qs-brand-input').value.trim().toLowerCase();
   const list=document.getElementById('qs-brand-list');
   if(!q){list.style.display='none';list.innerHTML='';return;}
-  const m=BRANDS.filter(b=>b.toLowerCase().startsWith(q)||b.toLowerCase().includes(q));
+  const starts=BRANDS.filter(b=>b.toLowerCase().startsWith(q));
+  const contains=BRANDS.filter(b=>!b.toLowerCase().startsWith(q)&&b.toLowerCase().includes(q));
+  const m=[...starts,...contains];
   list.innerHTML=m.length
     ?m.map(b=>`<div class="brand-item" onclick="pickQSBrand('${b.replace(/'/g,"\'")}')">${b}</div>`).join('')
     :`<div style="padding:9px 12px;font-size:13px;color:var(--muted);">ไม่พบ — พิมพ์ชื่อเองได้เลย</div>`;
@@ -657,7 +661,7 @@ function saveWSO(){
   if(!price||parseFloat(price)<=0){alert('กรุณากรอกราคา');return;}
   if(sigCtx['wso-sig']?.empty!==false){alert('กรุณาให้ลูกค้าเซ็นชื่อ');return;}
   const docno=document.getElementById('wso-docno').textContent;
-  const k='WSO-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;updateDocNos();
+  const k='WSO-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);updateDocNos();
   const brand=wsoSelectedBrand||document.getElementById('wso-brand-input').value||'—';
   const deposit=document.getElementById('wso-deposit').value;
   const balance=document.getElementById('wso-balance').value;

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>หลักฐานรับนาฬิกา — Expert Watch</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--text:#1a1a18;--muted:#6b6a66;--green:#27500A;--green-bg:#EAF3DE;}
+body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem 1rem;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;width:100%;max-width:400px;box-shadow:0 4px 16px rgba(0,0,0,0.08);}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
+.logo-row img{height:44px;width:auto;object-fit:contain;}
+.brand-name{font-size:15px;font-weight:700;}
+.brand-name span{display:block;font-size:12px;color:var(--muted);font-weight:400;}
+.badge-valid{background:var(--green-bg);color:var(--green);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;}
+.badge-valid i{font-size:20px;}
+.badge-valid div{font-size:14px;font-weight:600;}
+.badge-valid div span{display:block;font-size:12px;font-weight:400;margin-top:1px;}
+.doc-no{font-size:22px;font-weight:700;text-align:center;margin-bottom:1.25rem;letter-spacing:-0.5px;}
+.info-list{display:flex;flex-direction:column;gap:0;}
+.info-row{display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.info-row:last-child{border:none;}
+.ik{color:var(--muted);}
+.iv{font-weight:500;text-align:right;max-width:60%;}
+.footer-note{margin-top:1.25rem;padding:10px 14px;background:#F5F4F0;border-radius:8px;font-size:12px;color:var(--muted);text-align:center;line-height:1.6;}
+.err-box{background:#FCEBEB;border-radius:12px;padding:1.5rem;text-align:center;color:#791F1F;}
+.err-box i{font-size:36px;display:block;margin-bottom:8px;}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="logo-row">
+    <div>
+      <div class="brand-name">Expert Watch Repair Center<span>หลักฐานรับนาฬิกา / Collection Receipt</span></div>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const doc   = params.get('doc')   || '';
+const name  = params.get('name')  || '';
+const svc   = params.get('svc')   || '';
+const price = params.get('price') || '';
+const branch= params.get('branch')|| '';
+
+const el = document.getElementById('content');
+
+if (!doc || !name) {
+  el.innerHTML = `<div class="err-box"><i class="ti ti-alert-circle"></i><div style="font-size:15px;font-weight:600;margin-bottom:4px;">QR Code ไม่ถูกต้อง</div><div style="font-size:13px;">กรุณาติดต่อพนักงานสาขา</div></div>`;
+} else {
+  const priceNum = parseFloat(price);
+  const priceStr = isNaN(priceNum) ? price : '฿' + priceNum.toLocaleString('th-TH');
+  const now = new Date().toLocaleDateString('th-TH', {day:'numeric',month:'long',year:'numeric'});
+
+  el.innerHTML = `
+    <div class="badge-valid">
+      <i class="ti ti-circle-check"></i>
+      <div>งานด่วนสำเร็จแล้ว <span>Quick Service Completed</span></div>
+    </div>
+    <div class="doc-no">${doc}</div>
+    <div class="info-list">
+      <div class="info-row"><span class="ik">ลูกค้า / Name</span><span class="iv">${name}</span></div>
+      ${branch ? `<div class="info-row"><span class="ik">สาขา / Branch</span><span class="iv">${branch}</span></div>` : ''}
+      <div class="info-row"><span class="ik">งานที่ทำ / Service</span><span class="iv">${svc}</span></div>
+      <div class="info-row"><span class="ik">ราคา / Price</span><span class="iv" style="color:#27500A;font-weight:600;">${priceStr}</span></div>
+      <div class="info-row"><span class="ik">วันที่ / Date</span><span class="iv">${now}</span></div>
+    </div>
+    <div class="footer-note">
+      <strong>กรุณาแสดงหน้าจอนี้</strong>แก่พนักงานเมื่อมารับนาฬิกา<br>
+      Please show this screen when collecting your watch
+    </div>`;
+}
+</script>
+</body>
+</html>
