@@ -215,9 +215,42 @@ tbody tr:hover td{background:var(--bg);}
           <div style="font-size:14px;font-weight:500;">ใบรับงานด่วน / Quick Service</div>
           <div class="doc-no-badge" id="qs-docno">QS-03-0001</div>
         </div>
+        <div class="field">
+          <label>ชื่อลูกค้า / Name</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="text" id="qs-name" placeholder="ชื่อ-นามสกุล" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);outline:none;background:var(--bg);"/>
+            <button onclick="voiceInput('qs-name','qs-mic-name','qs-mic-name-lbl')" id="qs-mic-name" style="width:42px;height:42px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex-shrink:0;" title="กดพูด">
+              <i class="ti ti-microphone" id="qs-mic-name-icon" style="font-size:18px;color:var(--muted);" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
         <div class="row2">
-          <div class="field"><label>ชื่อลูกค้า / Name</label><input type="text" id="qs-name" placeholder="ชื่อ-นามสกุล"/></div>
-          <div class="field"><label>เบอร์โทร / Tel.</label><input type="tel" id="qs-phone" placeholder="0812345678" inputmode="numeric"/></div>
+          <div class="field">
+            <label>เบอร์โทร / Tel.</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="tel" id="qs-phone" placeholder="0812345678" inputmode="numeric" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);outline:none;background:var(--bg);"/>
+              <button onclick="voiceInput('qs-phone','qs-mic-phone','qs-mic-phone-lbl')" id="qs-mic-phone" style="width:42px;height:42px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;" title="กดพูด">
+                <i class="ti ti-microphone" id="qs-mic-phone-icon" style="font-size:18px;color:var(--muted);" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <label>ยี่ห้อนาฬิกา / Brand</label>
+            <div id="qs-brand-sel" style="display:none;align-items:center;gap:8px;background:#E6F1FB;border-radius:8px;padding:9px 12px;margin-bottom:0;font-weight:500;color:#0C447C;">
+              <i class="ti ti-check" style="font-size:13px;" aria-hidden="true"></i>
+              <span id="qs-brand-name"></span>
+              <button onclick="clearQSBrand()" style="margin-left:auto;background:none;border:none;font-size:12px;color:#185FA5;cursor:pointer;font-family:var(--font);">เปลี่ยน</button>
+            </div>
+            <div id="qs-brand-area" style="position:relative;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="text" id="qs-brand-input" placeholder="พิมพ์หรือพูดชื่อยี่ห้อ" oninput="filterQSBrands()" autocomplete="off" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);outline:none;background:var(--bg);"/>
+                <button onclick="voiceInput('qs-brand-input','qs-mic-brand','qs-mic-brand-lbl',filterQSBrands)" id="qs-mic-brand" style="width:42px;height:42px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;" title="กดพูด">
+                  <i class="ti ti-microphone" id="qs-mic-brand-icon" style="font-size:18px;color:var(--muted);" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div id="qs-brand-list" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:140px;overflow-y:auto;margin-top:4px;display:none;"></div>
+            </div>
+          </div>
         </div>
         <div class="sec-label">รายการงาน / Service</div>
         <div class="svc-grid">
@@ -497,6 +530,7 @@ function saveQS(){
     <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">สรุปงาน / Summary</div>
     <div class="sum-row"><span class="sk">เลขที่</span><span class="sv">${docno}</span></div>
     <div class="sum-row"><span class="sk">ลูกค้า</span><span class="sv">${name}</span></div>
+    <div class="sum-row"><span class="sk">ยี่ห้อ</span><span class="sv">${qsSelectedBrand||'—'}</span></div>
     <div class="sum-row"><span class="sk">งานที่ทำ</span><span class="sv">${svcList}</span></div>
     <div class="sum-row"><span class="sk">ราคา</span><span class="sv" style="color:#27500A;">฿${Number(price).toLocaleString('th-TH')}</span></div>
     <div class="sum-row"><span class="sk">ลายเซ็น</span><span class="sv" style="color:#27500A;">เซ็นแล้ว ✓</span></div>
@@ -548,6 +582,59 @@ function calcWSOBalance(){
   const p=parseFloat(document.getElementById('wso-price').value)||0;
   const d=parseFloat(document.getElementById('wso-deposit').value)||0;
   document.getElementById('wso-balance').value=Math.max(0,p-d)||'';
+}
+
+let voiceRecog=null,voiceActive=false,voiceTarget=null,voiceCallback=null,voiceIconId=null;
+function voiceInput(inputId,btnId,lblId,callback){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('เบราว์เซอร์นี้ไม่รองรับ กรุณาพิมพ์แทน');return;}
+  if(voiceActive&&voiceTarget===inputId){voiceRecog.stop();return;}
+  if(voiceActive){voiceRecog.stop();}
+  voiceTarget=inputId;voiceCallback=callback||null;voiceIconId=btnId+'-icon';
+  if(!voiceRecog){
+    voiceRecog=new SR();voiceRecog.lang='th-TH';voiceRecog.continuous=false;voiceRecog.interimResults=false;
+    voiceRecog.onresult=e=>{
+      const txt=e.results[0][0].transcript.trim();
+      document.getElementById(voiceTarget).value=txt;
+      if(voiceCallback)voiceCallback();
+    };
+    voiceRecog.onend=()=>{
+      voiceActive=false;
+      if(voiceIconId)document.getElementById(voiceIconId).style.color='var(--muted)';
+    };
+    voiceRecog.onerror=()=>{
+      voiceActive=false;
+      if(voiceIconId)document.getElementById(voiceIconId).style.color='var(--muted)';
+    };
+  }
+  voiceRecog.start();voiceActive=true;
+  document.getElementById(voiceIconId).style.color='#A32D2D';
+  document.getElementById(inputId).focus();
+}
+
+let qsSelectedBrand='';
+function filterQSBrands(){
+  const q=document.getElementById('qs-brand-input').value.trim().toLowerCase();
+  const list=document.getElementById('qs-brand-list');
+  if(!q){list.style.display='none';list.innerHTML='';return;}
+  const m=BRANDS.filter(b=>b.toLowerCase().startsWith(q)||b.toLowerCase().includes(q));
+  list.innerHTML=m.length
+    ?m.map(b=>`<div class="brand-item" onclick="pickQSBrand('${b.replace(/'/g,"\'")}')">${b}</div>`).join('')
+    :`<div style="padding:9px 12px;font-size:13px;color:var(--muted);">ไม่พบ — พิมพ์ชื่อเองได้เลย</div>`;
+  list.style.display='block';
+}
+function pickQSBrand(name){
+  qsSelectedBrand=name;
+  document.getElementById('qs-brand-name').textContent=name;
+  document.getElementById('qs-brand-sel').style.display='flex';
+  document.getElementById('qs-brand-area').style.display='none';
+}
+function clearQSBrand(){
+  qsSelectedBrand='';
+  document.getElementById('qs-brand-sel').style.display='none';
+  document.getElementById('qs-brand-area').style.display='block';
+  document.getElementById('qs-brand-input').value='';
+  document.getElementById('qs-brand-list').style.display='none';
 }
 
 function toggleMic(taId,iconId,lblId){
