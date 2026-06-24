@@ -125,6 +125,17 @@ tbody tr:hover td{background:var(--bg);}
 .sum-row:last-child{border:none;}
 .sk{color:var(--muted);}
 .sv{font-weight:500;}
+
+.camera-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9999;align-items:center;justify-content:center;padding:12px;}
+.camera-overlay.open{display:flex;}
+.camera-box{width:100%;max-width:520px;background:#111;border-radius:14px;overflow:hidden;color:#fff;}
+.camera-video{width:100%;max-height:70vh;background:#000;display:block;}
+.camera-actions{display:flex;gap:8px;padding:10px;background:#111;}
+.camera-actions button{flex:1;border:none;border-radius:9px;padding:12px;font-family:var(--font);font-weight:600;cursor:pointer;}
+.camera-shot{background:#fff;color:#111;}
+.camera-close{background:#333;color:#fff;}
+.camera-hint{font-size:12px;color:#ddd;padding:8px 12px 0;text-align:center;}
+
 @media(max-width:540px){
   th.hide-sm,td.hide-sm{display:none;}
   .main{padding:1rem 0.75rem;}
@@ -265,10 +276,10 @@ tbody tr:hover td{background:var(--bg);}
         <input type="text" id="qs-other-text" placeholder="ระบุรายการอื่นๆ..." style="display:none;width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);margin-bottom:10px;outline:none;"/>
         <div class="sec-label">รูปภาพนาฬิกา / Watch photos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <button type="button" onclick="openNativeCamera('qs-photo-grid')" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;width:100%;font-family:var(--font);color:var(--text);">
+          <button type="button" onclick="openCamera('qs-photo-grid')" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;font-family:var(--font);">
             <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">ถ่ายรูป</div>
-            <div style="font-size:10px;color:var(--muted);">เปิดกล้อง / Camera</div>
+            <div style="font-size:10px;color:var(--muted);">Take photo</div>
           </button>
           <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-photo" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
@@ -351,10 +362,10 @@ tbody tr:hover td{background:var(--bg);}
         </div>
         <div class="sec-label">รูปภาพ / Photos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <button type="button" onclick="openNativeCamera('wso-photo-grid')" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;width:100%;font-family:var(--font);color:var(--text);">
+          <button type="button" onclick="openCamera('wso-photo-grid')" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;font-family:var(--font);">
             <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">ถ่ายรูป</div>
-            <div style="font-size:10px;color:var(--muted);">เปิดกล้อง / Camera</div>
+            <div style="font-size:10px;color:var(--muted);">Take photo</div>
           </button>
           <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-photo" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
@@ -400,6 +411,19 @@ tbody tr:hover td{background:var(--bg);}
     </div>
     <div class="info-grid" id="m-grid"></div>
     <div class="repair-note" id="m-repair"></div>
+  </div>
+</div>
+
+
+<div class="camera-overlay" id="camera-overlay">
+  <div class="camera-box">
+    <div class="camera-hint" id="camera-hint">กำลังเปิดกล้อง...</div>
+    <video class="camera-video" id="camera-video" autoplay playsinline muted></video>
+    <canvas id="camera-canvas" style="display:none;"></canvas>
+    <div class="camera-actions">
+      <button type="button" class="camera-close" onclick="closeCamera()">ยกเลิก</button>
+      <button type="button" class="camera-shot" onclick="takeCameraPhoto()">ถ่ายภาพ</button>
+    </div>
   </div>
 </div>
 
@@ -587,23 +611,68 @@ function selChip(el,gid){
 }
 
 
+let currentCameraGridId=null;
+let currentCameraStream=null;
 
-function openNativeCamera(gridId){
-  // Samsung/Android ต้องใช้ capture="environment" ไม่ใช่ capture="camera"
-  // และสร้าง input ใหม่จากการกดปุ่มจริง เพื่อให้ Chrome/Android ยอมเปิดกล้องหลัง login
-  const input=document.createElement('input');
-  input.type='file';
-  input.accept='image/*';
-  input.setAttribute('capture','environment');
-  input.style.position='fixed';
-  input.style.left='-1000px';
-  input.style.top='-1000px';
-  input.onchange=function(){
-    addPhotos(input,gridId);
-    setTimeout(()=>{try{document.body.removeChild(input);}catch(e){}},300);
-  };
-  document.body.appendChild(input);
-  input.click();
+async function openCamera(gridId){
+  currentCameraGridId=gridId;
+  const overlay=document.getElementById('camera-overlay');
+  const video=document.getElementById('camera-video');
+  const hint=document.getElementById('camera-hint');
+  overlay.classList.add('open');
+  hint.textContent='กำลังเปิดกล้อง...';
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      throw new Error('เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องโดยตรง');
+    }
+    currentCameraStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},
+      audio:false
+    });
+    video.srcObject=currentCameraStream;
+    await video.play();
+    hint.textContent='จัดตำแหน่งนาฬิกา แล้วกดถ่ายภาพ';
+  }catch(err){
+    console.error(err);
+    hint.textContent='เปิดกล้องไม่ได้: กรุณาอนุญาต Camera ใน Chrome > Site settings หรือใช้ปุ่มเลือกรูปแทน';
+  }
+}
+
+function closeCamera(){
+  const overlay=document.getElementById('camera-overlay');
+  const video=document.getElementById('camera-video');
+  overlay.classList.remove('open');
+  if(currentCameraStream){
+    currentCameraStream.getTracks().forEach(t=>t.stop());
+    currentCameraStream=null;
+  }
+  video.srcObject=null;
+}
+
+function takeCameraPhoto(){
+  const video=document.getElementById('camera-video');
+  if(!currentCameraStream||!video.videoWidth){alert('ยังไม่พบภาพจากกล้อง');return;}
+  const canvas=document.getElementById('camera-canvas');
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+  const dataUrl=canvas.toDataURL('image/jpeg',0.88);
+  addPhotoDataUrl(dataUrl,currentCameraGridId);
+  closeCamera();
+}
+
+function addPhotoDataUrl(dataUrl,gridId){
+  const grid=document.getElementById(gridId);
+  if(!photoCounters[gridId])photoCounters[gridId]=0;
+  if(photoCounters[gridId]>=6)return;
+  photoCounters[gridId]++;
+  const id=gridId+photoCounters[gridId];
+  const div=document.createElement('div');
+  div.className='photo-thumb';
+  div.id=id;
+  div.innerHTML=`<img src="${dataUrl}" alt="รูป" style="width:100%;height:100%;object-fit:cover;"/>`
+    +`<button class="photo-del" onclick="document.getElementById('${id}').remove();photoCounters['${gridId}']--;" aria-label="ลบ" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;">✕</button>`;
+  grid.appendChild(div);
 }
 
 function addPhotos(input,gridId){
