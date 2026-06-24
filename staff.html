@@ -126,6 +126,14 @@ tbody tr:hover td{background:var(--bg);}
 .camera-shot{background:#fff;color:#111;}
 .camera-cancel{background:#333;color:#fff;}
 .camera-hint{color:#ccc;font-size:11px;text-align:center;padding:0 12px 12px;background:#111;font-family:var(--font);}
+.line-warning{display:none;background:#fff7e6;border:1px solid #ffd591;color:#5c3b00;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.5;}
+.line-warning.show{display:block;}
+.line-warning button,.line-open-btn{margin-top:8px;width:100%;border:none;border-radius:8px;background:#1a1a18;color:#fff;padding:10px 12px;font-family:var(--font);font-weight:600;cursor:pointer;}
+.line-modal-text{background:#fff;color:#1a1a18;border-radius:14px;padding:18px;max-width:420px;width:100%;font-family:var(--font);line-height:1.6;}
+.line-modal-text h3{font-size:17px;margin-bottom:8px;}
+.line-modal-text p{font-size:13px;color:#4a4a46;margin-bottom:10px;}
+.line-modal-text .small{font-size:12px;color:#777;margin-top:8px;text-align:center;}
+
 .mic-wrap{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;}
 .mic-area{flex:1;border:none;outline:none;padding:9px 12px;font-size:13px;min-height:56px;resize:none;background:var(--surface);font-family:var(--font);}
 .mic-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 10px;border-left:1px solid var(--border);background:var(--bg);gap:3px;min-width:50px;cursor:pointer;}
@@ -163,6 +171,11 @@ tbody tr:hover td{background:var(--bg);}
 </div>
 
 <div class="main">
+  <div id="line-warning" class="line-warning">
+    ตอนนี้เปิดผ่าน LINE ซึ่งมักไม่อนุญาตให้เว็บเปิดกล้องโดยตรงบน Samsung/Android<br>
+    กรุณากดปุ่มด้านล่างเพื่อเปิดใน Chrome ก่อนถ่ายรูป
+    <button type="button" onclick="openCurrentPageInChrome()">เปิดใน Chrome</button>
+  </div>
   <div id="login-screen">
     <div class="login-box">
       <h2>🏪 เข้าสู่ระบบ</h2>
@@ -439,6 +452,17 @@ tbody tr:hover td{background:var(--bg);}
   </div>
 </div>
 
+<div class="camera-modal" id="line-camera-modal" aria-hidden="true">
+  <div class="line-modal-text">
+    <h3>เปิดกล้องผ่าน LINE ไม่ได้</h3>
+    <p>LINE in-app browser บน Samsung/Android มักบล็อกการเปิดกล้องจากเว็บ ทำให้ระบบพาไปหน้าเลือกรูปแทน</p>
+    <p>ให้เปิดหน้านี้ด้วย Chrome แล้วกดถ่ายรูปอีกครั้ง</p>
+    <button type="button" class="line-open-btn" onclick="openCurrentPageInChrome()">เปิดใน Chrome</button>
+    <button type="button" style="margin-top:8px;width:100%;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;padding:10px 12px;font-family:var(--font);font-weight:600;cursor:pointer;" onclick="copyCurrentLink()">คัดลอกลิงก์</button>
+    <div class="small">ถ้ายังไม่เปิด ให้กด ⋮ มุมขวาบนของ LINE แล้วเลือก “เปิดในเบราว์เซอร์”</div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL='https://etggtjqnkyzjqmiwokth.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
@@ -566,6 +590,36 @@ function clearSig(canvasId,phId){
 }
 
 const SVC_LABELS={battery:'เปลี่ยนถ่าน',film:'ติดฟิล์ม',band:'ปรับสาย',polish:'ขัดเบื้องต้น',time:'เซ็ตเวลา',other:'อื่นๆ'};
+function isLineBrowser(){
+  return /Line\//i.test(navigator.userAgent) || /Linelite/i.test(navigator.userAgent);
+}
+function openCurrentPageInChrome(){
+  const u=new URL(window.location.href);
+  const noScheme=u.href.replace(/^https?:\/\//,'');
+  const intent='intent://'+noScheme+'#Intent;scheme='+u.protocol.replace(':','')+';package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(u.href)+';end';
+  window.location.href=intent;
+}
+async function copyCurrentLink(){
+  try{await navigator.clipboard.writeText(window.location.href);alert('คัดลอกลิงก์แล้ว กรุณาเปิดใน Chrome');}
+  catch(e){prompt('คัดลอกลิงก์นี้ไปเปิดใน Chrome',window.location.href);}
+}
+function showLineCameraModal(){
+  const m=document.getElementById('line-camera-modal');
+  if(m){m.classList.add('open');m.setAttribute('aria-hidden','false');}
+}
+function hideLineCameraModal(){
+  const m=document.getElementById('line-camera-modal');
+  if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true');}
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  if(isLineBrowser()){
+    const w=document.getElementById('line-warning');
+    if(w)w.classList.add('show');
+  }
+  const lm=document.getElementById('line-camera-modal');
+  if(lm)lm.addEventListener('click',e=>{if(e.target===lm)hideLineCameraModal();});
+});
+
 
 function saveQS(){
   const name=document.getElementById('qs-name').value.trim();
@@ -628,6 +682,10 @@ let activeCameraStream=null;
 
 async function openCameraForGrid(gridId){
   activeCameraGridId=gridId;
+  if(isLineBrowser()){
+    showLineCameraModal();
+    return;
+  }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     openCaptureFallback(gridId);
     return;
