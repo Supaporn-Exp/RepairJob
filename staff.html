@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>พนักงานสาขา — Expert Watch</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -14,6 +14,9 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
 .brand{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;}
 .header-right{display:flex;align-items:center;gap:10px;}
+.offline-badge{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;white-space:nowrap;}
+.offline-badge.offline{background:var(--bg-danger,#FCEBEB);color:#A32D2D;}
+.offline-badge.syncing{background:var(--bg-warning,#FAEEDA);color:#854F0B;}
 .back-link{font-size:12px;color:var(--muted);text-decoration:none;border:1px solid var(--border);padding:5px 12px;border-radius:20px;}
 .logout-btn{font-size:12px;color:var(--muted);background:none;border:1px solid var(--border);padding:5px 12px;border-radius:20px;cursor:pointer;display:none;}
 .main{max-width:860px;margin:0 auto;padding:2rem 1rem;}
@@ -125,17 +128,6 @@ tbody tr:hover td{background:var(--bg);}
 .sum-row:last-child{border:none;}
 .sk{color:var(--muted);}
 .sv{font-weight:500;}
-
-.camera-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9999;align-items:center;justify-content:center;padding:12px;}
-.camera-overlay.open{display:flex;}
-.camera-box{width:100%;max-width:520px;background:#111;border-radius:14px;overflow:hidden;color:#fff;}
-.camera-video{width:100%;max-height:70vh;background:#000;display:block;}
-.camera-actions{display:flex;gap:8px;padding:10px;background:#111;}
-.camera-actions button{flex:1;border:none;border-radius:9px;padding:12px;font-family:var(--font);font-weight:600;cursor:pointer;}
-.camera-shot{background:#fff;color:#111;}
-.camera-close{background:#333;color:#fff;}
-.camera-hint{font-size:12px;color:#ddd;padding:8px 12px 0;text-align:center;}
-
 @media(max-width:540px){
   th.hide-sm,td.hide-sm{display:none;}
   .main{padding:1rem 0.75rem;}
@@ -151,6 +143,7 @@ tbody tr:hover td{background:var(--bg);}
     พนักงานสาขา
   </div>
   <div class="header-right">
+    <span id="offline-badge" class="offline-badge" style="display:none;"></span>
     <a href="index.html" class="back-link">← หน้าหลัก</a>
     <button class="logout-btn" id="logout-btn" onclick="doLogout()">ออกจากระบบ</button>
   </div>
@@ -276,11 +269,12 @@ tbody tr:hover td{background:var(--bg);}
         <input type="text" id="qs-other-text" placeholder="ระบุรายการอื่นๆ..." style="display:none;width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);margin-bottom:10px;outline:none;"/>
         <div class="sec-label">รูปภาพนาฬิกา / Watch photos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <button type="button" onclick="openCamera('qs-photo-grid')" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;font-family:var(--font);">
+          <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">ถ่ายรูป</div>
             <div style="font-size:10px;color:var(--muted);">Take photo</div>
-          </button>
+            <input type="file" accept="image/*" capture="camera" style="display:none;" onchange="addPhotos(this,'qs-photo-grid')"/>
+          </label>
           <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-photo" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">เลือกรูป</div>
@@ -362,11 +356,12 @@ tbody tr:hover td{background:var(--bg);}
         </div>
         <div class="sec-label">รูปภาพ / Photos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <button type="button" onclick="openCamera('wso-photo-grid')" style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;font-family:var(--font);">
+          <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-camera" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">ถ่ายรูป</div>
             <div style="font-size:10px;color:var(--muted);">Take photo</div>
-          </button>
+            <input type="file" accept="image/*" capture="camera" style="display:none;" onchange="addPhotos(this,'wso-photo-grid')"/>
+          </label>
           <label style="border:1.5px dashed var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--surface);display:block;">
             <i class="ti ti-photo" style="font-size:22px;display:block;margin-bottom:4px;color:var(--muted);" aria-hidden="true"></i>
             <div style="font-size:12px;font-weight:500;">เลือกรูป</div>
@@ -411,25 +406,40 @@ tbody tr:hover td{background:var(--bg);}
     </div>
     <div class="info-grid" id="m-grid"></div>
     <div class="repair-note" id="m-repair"></div>
-  </div>
-</div>
-
-
-<div class="camera-overlay" id="camera-overlay">
-  <div class="camera-box">
-    <div class="camera-hint" id="camera-hint">กำลังเปิดกล้อง...</div>
-    <video class="camera-video" id="camera-video" autoplay playsinline muted></video>
-    <canvas id="camera-canvas" style="display:none;"></canvas>
-    <div class="camera-actions">
-      <button type="button" class="camera-close" onclick="closeCamera()">ยกเลิก</button>
-      <button type="button" class="camera-shot" onclick="takeCameraPhoto()">ถ่ายภาพ</button>
+    <div id="m-status-editor" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">
+        <i class="ti ti-edit" style="font-size:12px;" aria-hidden="true"></i> อัปเดตสถานะ / Update status
+      </div>
+      <select id="m-status-select" onchange="onStatusSelectChange()" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);outline:none;background:var(--bg);margin-bottom:8px;">
+        <option value="รอเช็ค">รอเช็ค</option>
+        <option value="กำลังซ่อม">กำลังซ่อม</option>
+        <option value="รอ Confirm">รอ Confirm</option>
+        <option value="สั่งแล้วรออะไหล่">สั่งแล้วรออะไหล่</option>
+        <option value="รอหาอะหลั่ย">รอหาอะหลั่ย</option>
+        <option value="เทียบเวลา">เทียบเวลา</option>
+        <option value="งานเสร็จรอมารับ">งานเสร็จรอมารับ</option>
+        <option value="เสร็จและจัดส่งแล้ว">เสร็จและจัดส่งแล้ว</option>
+        <option value="ไม่ซ่อมรับคืนแล้ว">ไม่ซ่อมรับคืนแล้ว</option>
+        <option value="รอคืนลูกค้าไม่ซ่อม">รอคืนลูกค้าไม่ซ่อม</option>
+        <option value="คืนไม่มีอะไหล่">คืนไม่มีอะไหล่</option>
+        <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
+      </select>
+      <div id="m-finishdate-wrap" style="display:none;margin-bottom:8px;">
+        <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;">วันที่เสร็จงาน / Finish date</label>
+        <input type="date" id="m-finishdate-input" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);outline:none;background:var(--bg);"/>
+      </div>
+      <button onclick="updateJobStatus()" id="m-status-btn" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-family:var(--font);font-weight:600;cursor:pointer;">บันทึก</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+        <i class="ti ti-info-circle" style="font-size:11px;" aria-hidden="true"></i>
+        สาขานี้ซ่อมเอง (ไม่ได้ส่งสนง.ใหญ่) จึงสามารถอัปเดตสถานะได้
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 const SUPABASE_URL='https://etggtjqnkyzjqmiwokth.supabase.co';
-const SUPABASE_ANON_KEY='sb_publishable_sR2v12bmK9k-oHzOB9o6Ig_PGBL6ZbY';
+const SUPABASE_ANON_KEY='sb_publishable_rd5Zj1dwH_6PAlIA2B7HNQ_Z-5EUyCG';
 const BRANCH_PASSWORDS={'02':'@Pin02','03':'@Lad03','05':'@Fut05','09':'@Fas09','12':'@Wor12','16':'@Meg16','21':'@Eas21','22':'@Ico22','23':'@Wes23','25':'@Par25','00':'@Off00'};
 const BRANCH_NAMES={'02':'Central ปิ่นเกล้า','03':'Central ลาดพร้าว','05':'Future Park Rangsit','09':'Fashion Island','12':'Central World','16':'Mega Bangna','21':'Eastville','22':'Icon Siam','23':'WestGate','25':'Central Park','00':'สำนักงานกลาง'};
 function loadSeq(){try{return JSON.parse(localStorage.getItem('expert_seq')||'{}')}catch(e){return {}}}
@@ -439,24 +449,212 @@ const BRANDS=['A. Lange & Söhne','Alpina','Audemars Piguet','Ball Watch','Baume
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const STATUS_STYLE={'เสร็จและจัดส่งแล้ว':{bg:'#e8f5e0',color:'#2e6b10'},'งานเสร็จรอมารับ':{bg:'#d4f2e7',color:'#0a6644'},'กำลังซ่อม':{bg:'#ddeeff',color:'#1254a0'},'กำลังซ่อม+ส่งทำ':{bg:'#ddeeff',color:'#1254a0'},'เทียบเวลา':{bg:'#ddeeff',color:'#1254a0'},'รอคิวช่าง':{bg:'#fff0d4',color:'#8a4a00'},'รอเช็ค':{bg:'#fff0d4',color:'#7a4500'},'สั่งแล้วรออะไหล่':{bg:'#fff0d4',color:'#7a4500'},'รอหาอะหลั่ย':{bg:'#fff0d4',color:'#7a4500'},'ส่งทำ':{bg:'#fff0d4',color:'#7a4500'},'รอ Confirm':{bg:'#fff0d4',color:'#7a4500'},'ไม่ซ่อมรับคืนแล้ว':{bg:'#f0eeea',color:'#666'},'รอคืนลูกค้าไม่ซ่อม':{bg:'#f0eeea',color:'#666'},'เก็บที่ออฟฟิศ':{bg:'#f0eeea',color:'#666'},'คืนไม่มีอะไหล่':{bg:'#fde8e8',color:'#9b2222'},'ติดต่อไม่ได้':{bg:'#fde8e8',color:'#9b2222'}};
 const ACTIVE_STATUSES=['กำลังซ่อม','รอคิวช่าง','รอเช็ค','สั่งแล้วรออะไหล่','ส่งทำ','รอหาอะหลั่ย','รอ Confirm','เทียบเวลา','กำลังซ่อม+ส่งทำ','งานเสร็จรอมารับ','เก็บที่ออฟฟิศ','ติดต่อไม่ได้'];
-let currentShop=null,currentTab='active',allJobs=[],selectedSvc=new Set(),wsoSelectedBrand='',recognizing=false,recognition=null;
-const photoCounters={};
+let currentShop=null,currentTab='active',allJobs=[],selectedSvc=new Set(),wsoSelectedBrand='',wsoPhotoCount=0,recognizing=false,recognition=null;
 let sigCtx={};
+
+/* ===================== OFFLINE LAYER ===================== */
+const DB_NAME='expert_offline_db';
+const DB_VERSION=1;
+const STORE_PENDING='pending_jobs';
+const STORE_CACHE='cached_jobs';
+let idb=null;
+let isOnline=navigator.onLine;
+let syncInProgress=false;
+
+function openIDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(STORE_PENDING)){
+        const s=db.createObjectStore(STORE_PENDING,{keyPath:'localId'});
+        s.createIndex('shop_no','shop_no',{unique:false});
+      }
+      if(!db.objectStoreNames.contains(STORE_CACHE)){
+        const s2=db.createObjectStore(STORE_CACHE,{keyPath:'jobno'});
+        s2.createIndex('shop_no','shop_no',{unique:false});
+      }
+    };
+    req.onsuccess=e=>{idb=e.target.result;resolve(idb);};
+    req.onerror=e=>reject(e);
+  });
+}
+
+function idbAdd(storeName,record){
+  return new Promise((resolve,reject)=>{
+    const tx=idb.transaction(storeName,'readwrite');
+    tx.objectStore(storeName).put(record);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=e=>reject(e);
+  });
+}
+
+function idbGetAll(storeName,shopNo){
+  return new Promise((resolve,reject)=>{
+    const tx=idb.transaction(storeName,'readonly');
+    const store=tx.objectStore(storeName);
+    const idx=store.index('shop_no');
+    const req=shopNo?idx.getAll(shopNo):store.getAll();
+    req.onsuccess=()=>resolve(req.result||[]);
+    req.onerror=e=>reject(e);
+  });
+}
+
+function idbDelete(storeName,key){
+  return new Promise((resolve,reject)=>{
+    const tx=idb.transaction(storeName,'readwrite');
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=e=>reject(e);
+  });
+}
+
+function idbClearCache(shopNo){
+  return new Promise(async(resolve)=>{
+    const all=await idbGetAll(STORE_CACHE,shopNo);
+    const tx=idb.transaction(STORE_CACHE,'readwrite');
+    const store=tx.objectStore(STORE_CACHE);
+    all.forEach(r=>store.delete(r.jobno));
+    tx.oncomplete=()=>resolve();
+  });
+}
+
+function genOfflineDocNo(prefix,shop){
+  const now=new Date();
+  const dateStr=now.toISOString().slice(5,10).replace('-','');
+  const k='OFF-'+prefix+'-'+shop+'-'+dateStr;
+  const seq=String((BRANCH_SEQ[k]||0)+1).padStart(3,'0');
+  BRANCH_SEQ[k]=(BRANCH_SEQ[k]||0)+1;saveSeq(BRANCH_SEQ);
+  return `${prefix}-${shop}-OFF-${dateStr}-${seq}`;
+}
+
+async function queueOfflineWrite(row,opType){
+  const localId='pend_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  await idbAdd(STORE_PENDING,{
+    localId,
+    shop_no:row.shop_no||currentShop,
+    op:opType,
+    row,
+    queuedAt:new Date().toISOString(),
+    attempts:0
+  });
+  updateOfflineBadge();
+  return localId;
+}
+
+async function getPendingCount(){
+  if(!idb||!currentShop)return 0;
+  const all=await idbGetAll(STORE_PENDING,currentShop);
+  return all.length;
+}
+
+async function updateOfflineBadge(){
+  const badge=document.getElementById('offline-badge');
+  if(!badge)return;
+  const count=await getPendingCount();
+  if(!isOnline){
+    badge.style.display='flex';
+    badge.className='offline-badge offline';
+    badge.innerHTML=`<i class="ti ti-wifi-off" style="font-size:13px;" aria-hidden="true"></i> ออฟไลน์${count>0?` — รอ sync ${count} รายการ`:''}`;
+  }else if(count>0){
+    badge.style.display='flex';
+    badge.className='offline-badge syncing';
+    badge.innerHTML=`<i class="ti ti-refresh" style="font-size:13px;" aria-hidden="true"></i> กำลัง sync ${count} รายการ...`;
+  }else{
+    badge.style.display='none';
+  }
+}
+
+async function syncPendingJobs(){
+  if(syncInProgress||!isOnline||!idb||!currentShop)return;
+  syncInProgress=true;
+  try{
+    const pending=await idbGetAll(STORE_PENDING,currentShop);
+    if(pending.length===0){syncInProgress=false;updateOfflineBadge();return;}
+
+    pending.sort((a,b)=>new Date(a.queuedAt)-new Date(b.queuedAt));
+
+    for(const item of pending){
+      try{
+        let result;
+        if(item.op==='insert'){
+          result=await sb.from('repair_jobs').insert([item.row]);
+        }else if(item.op==='update'){
+          result=await sb.from('repair_jobs').update(item.row.updateData).eq('jobno',item.row.jobno);
+        }
+        if(result.error){
+          item.attempts=(item.attempts||0)+1;
+          await idbAdd(STORE_PENDING,item);
+          if(item.attempts>=5){
+            console.warn('Sync failed after 5 attempts, keeping in queue:',item.localId,result.error.message);
+          }
+        }else{
+          await idbDelete(STORE_PENDING,item.localId);
+        }
+      }catch(err){
+        item.attempts=(item.attempts||0)+1;
+        await idbAdd(STORE_PENDING,item);
+      }
+    }
+    await updateOfflineBadge();
+    if(document.getElementById('jobs-container'))loadJobs(false);
+  }finally{
+    syncInProgress=false;
+  }
+}
+
+function setupConnectionMonitor(){
+  window.addEventListener('online',()=>{
+    isOnline=true;
+    updateOfflineBadge();
+    updateDocNos();
+    setTimeout(syncPendingJobs,1000);
+  });
+  window.addEventListener('offline',()=>{
+    isOnline=false;
+    updateOfflineBadge();
+    updateDocNos();
+  });
+  setInterval(async()=>{
+    try{
+      const ctrl=new AbortController();
+      const t=setTimeout(()=>ctrl.abort(),5000);
+      await fetch(SUPABASE_URL+'/rest/v1/',{method:'HEAD',signal:ctrl.signal,headers:{apikey:SUPABASE_ANON_KEY}});
+      clearTimeout(t);
+      if(!isOnline){isOnline=true;updateOfflineBadge();updateDocNos();syncPendingJobs();}
+    }catch(e){
+      if(isOnline){isOnline=false;updateOfflineBadge();updateDocNos();}
+    }
+  },15000);
+}
+/* =================== END OFFLINE LAYER =================== */
 
 function badge(s){const st=STATUS_STYLE[s]||{bg:'#f0eeea',color:'#666'};return `<span class="badge" style="background:${st.bg};color:${st.color};">${s||'—'}</span>`;}
 function fmt(v){return v&&v!==''?v:'—';}
 function fmtMoney(v){const n=parseFloat(v);return isNaN(n)||n===0?'—':'฿'+n.toLocaleString('th-TH');}
 function getDocNo(prefix,shop){const seq=String(BRANCH_SEQ[prefix+'-'+shop]||1).padStart(4,'0');return `${prefix}-${shop}-${seq}`;}
-function updateDocNos(){if(!currentShop)return;document.getElementById('qs-docno').textContent=getDocNo('QS',currentShop);document.getElementById('wso-docno').textContent=getDocNo('WSO',currentShop);}
+function updateDocNos(){
+  if(!currentShop)return;
+  if(isOnline){
+    document.getElementById('qs-docno').textContent=getDocNo('QS',currentShop);
+    document.getElementById('wso-docno').textContent=getDocNo('WSO',currentShop);
+  }else{
+    document.getElementById('qs-docno').textContent='QS-'+currentShop+'-OFF-xxx';
+    document.getElementById('wso-docno').textContent='WSO-'+currentShop+'-OFF-xxx';
+  }
+}
 
-function doStaffLogin(){
+async function doStaffLogin(){
   const shop=document.getElementById('shop-select').value;
   const pwd=document.getElementById('staff-pwd').value;
   const err=document.getElementById('login-err');
   if(!shop){err.textContent='กรุณาเลือกสาขา';return;}
   if(BRANCH_PASSWORDS[shop]!==pwd){err.textContent='รหัสผ่านไม่ถูกต้อง';return;}
   currentShop=shop;sessionStorage.setItem('staff_shop',shop);
+  if(!idb)await openIDB();
+  setupConnectionMonitor();
   showPanel(shop);loadJobs();
+  syncPendingJobs();
 }
 
 function showPanel(shop){
@@ -467,12 +665,21 @@ function showPanel(shop){
   document.getElementById('branch-badge').textContent=name;
   document.getElementById('panel-title').textContent='สาขา '+name;
   updateDocNos();
+  updateOfflineBadge();
 }
 
 function doLogout(){sessionStorage.removeItem('staff_shop');location.reload();}
 document.getElementById('staff-pwd').addEventListener('keydown',e=>{if(e.key==='Enter')doStaffLogin();});
 const saved=sessionStorage.getItem('staff_shop');
-if(saved){currentShop=saved;showPanel(saved);loadJobs();}
+if(saved){
+  (async()=>{
+    currentShop=saved;
+    if(!idb)await openIDB();
+    setupConnectionMonitor();
+    showPanel(saved);loadJobs();
+    syncPendingJobs();
+  })();
+}
 
 function switchMenu(menu){
   ['jobs','qs','wso'].forEach(m=>{
@@ -483,30 +690,138 @@ function switchMenu(menu){
   if(menu==='wso')initSig('wso-sig','wso-sig-ph');
 }
 
-async function loadJobs(){
+const PAGE_SIZE=50;
+let currentPage=0,totalCount=0,currentSearchQ='';
+
+async function loadJobs(resetPage=true){
+  if(resetPage)currentPage=0;
   const div=document.getElementById('jobs-container');
   div.innerHTML='<div class="state-box"><div class="spinner"></div><div>กำลังโหลด...</div></div>';
-  const {data,error}=await sb.from('repair_jobs').select('*').eq('shop_no',currentShop).order('jobdate',{ascending:false});
-  if(error){div.innerHTML=`<div class="state-box">เกิดข้อผิดพลาด: ${error.message}</div>`;return;}
-  allJobs=data||[];renderJobs();
+
+  if(isOnline){
+    try{
+      let query=sb.from('repair_jobs').select('*',{count:'exact'}).eq('shop_no',currentShop);
+      if(currentTab==='active'){
+        query=query.in('finaldesc',ACTIVE_STATUSES);
+      }
+      if(currentSearchQ){
+        query=query.or(`jobno.ilike.%${currentSearchQ}%,clientname.ilike.%${currentSearchQ}%`);
+      }
+      const from=currentPage*PAGE_SIZE;
+      const to=from+PAGE_SIZE-1;
+      query=query.order('jobdate',{ascending:false}).range(from,to);
+
+      const {data,error,count}=await query;
+      if(error)throw error;
+
+      allJobs=data||[];
+      totalCount=count||0;
+
+      if(idb&&resetPage&&currentPage===0&&!currentSearchQ){
+        await idbClearCache(currentShop);
+        for(const r of allJobs){await idbAdd(STORE_CACHE,{...r,shop_no:currentShop});}
+      }
+
+      const pending=idb?await idbGetAll(STORE_PENDING,currentShop):[];
+      if(pending.length>0&&currentPage===0){
+        const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
+        allJobs=[...pendingRows,...allJobs];
+      }
+
+      renderJobs();
+      return;
+    }catch(err){
+      isOnline=false;
+      updateOfflineBadge();
+    }
+  }
+
+  if(!idb){div.innerHTML=`<div class="state-box">ไม่มีการเชื่อมต่อ และไม่มีข้อมูลที่เก็บไว้ในเครื่อง</div>`;return;}
+
+  const cached=await idbGetAll(STORE_CACHE,currentShop);
+  const pending=await idbGetAll(STORE_PENDING,currentShop);
+  const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
+  const pendingUpdates={};
+  pending.filter(p=>p.op==='update').forEach(p=>{pendingUpdates[p.row.jobno]=p.row.updateData;});
+
+  let merged=[...pendingRows,...cached].map(r=>{
+    if(pendingUpdates[r.jobno]){
+      return {...r,...pendingUpdates[r.jobno],_pendingUpdate:true};
+    }
+    return r;
+  });
+
+  if(currentTab==='active'){
+    merged=merged.filter(r=>ACTIVE_STATUSES.includes(r.finaldesc));
+  }
+  if(currentSearchQ){
+    const q=currentSearchQ.toLowerCase();
+    merged=merged.filter(r=>(r.jobno||'').toLowerCase().includes(q)||(r.clientname||'').toLowerCase().includes(q));
+  }
+
+  allJobs=merged;
+  totalCount=merged.length;
+  renderJobs(true);
 }
 
-function switchTab(tab,btn){currentTab=tab;document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderJobs();}
-function doSearch(){renderJobs(document.getElementById('search-q').value.trim().toLowerCase());}
+function switchTab(tab,btn){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadJobs(true);
+}
+function doSearch(){
+  currentSearchQ=document.getElementById('search-q').value.trim();
+  loadJobs(true);
+}
 document.getElementById('search-q').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
 
-function renderJobs(q=''){
-  let jobs=allJobs;
-  if(currentTab==='active')jobs=jobs.filter(r=>ACTIVE_STATUSES.includes(r.finaldesc));
-  if(q)jobs=jobs.filter(r=>(r.jobno||'').toLowerCase().includes(q)||(r.clientname||'').toLowerCase().includes(q));
-  const div=document.getElementById('jobs-container');
-  if(!jobs.length){div.innerHTML='<div class="state-box">ไม่พบรายการ</div>';return;}
-  const rows=jobs.map(r=>`<tr onclick="openModal('${r.jobno.replace(/'/g,"\'")}')" ><td style="font-weight:600;">${r.jobno}</td><td>${r.clientname||'—'}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.category||'—'}</td><td>${badge(r.finaldesc)}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;">${r.jobdate||'—'}</td></tr>`).join('');
-  div.innerHTML=`<div class="table-wrap"><div class="table-header">พบ <strong>${jobs.length}</strong> รายการ</div><div style="overflow-x:auto;"><table><thead><tr><th>Job No</th><th>ลูกค้า</th><th class="hide-sm">นาฬิกา</th><th>สถานะ</th><th class="hide-sm">วันที่รับ</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+function goToPage(p){
+  if(p<0||p*PAGE_SIZE>=totalCount)return;
+  currentPage=p;
+  loadJobs(false);
 }
 
+function renderJobs(offlineMode){
+  const div=document.getElementById('jobs-container');
+  if(!allJobs.length){
+    div.innerHTML='<div class="state-box">ไม่พบรายการ</div>';
+    return;
+  }
+  const rows=allJobs.map(r=>{
+    const pendingTag=r._pending?`<span style="font-size:10px;background:var(--bg-warning);color:#854F0B;padding:2px 7px;border-radius:20px;margin-left:6px;white-space:nowrap;"><i class="ti ti-clock" style="font-size:10px;" aria-hidden="true"></i> รอ sync</span>`
+      :r._pendingUpdate?`<span style="font-size:10px;background:var(--bg-warning);color:#854F0B;padding:2px 7px;border-radius:20px;margin-left:6px;white-space:nowrap;">แก้ไขรอ sync</span>`:'';
+    return `<tr onclick="openModal('${r.jobno.replace(/'/g,"\'")}')" ><td style="font-weight:600;">${r.jobno}${pendingTag}</td><td>${r.clientname||'—'}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.category||'—'}</td><td>${badge(r.finaldesc)}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;">${r.jobdate||'—'}</td></tr>`;
+  }).join('');
+
+  let pagination='';
+  if(!offlineMode){
+    const totalPages=Math.max(1,Math.ceil(totalCount/PAGE_SIZE));
+    const pageNum=currentPage+1;
+    const fromN=currentPage*PAGE_SIZE+1;
+    const toN=Math.min(totalCount,fromN+allJobs.length-1);
+    pagination=`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">
+        <span>แสดง ${fromN}-${toN} จาก ${totalCount} รายการ</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button onclick="goToPage(${currentPage-1})" ${currentPage<=0?'disabled':''} style="border:1px solid var(--border);background:var(--surface);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--font);${currentPage<=0?'opacity:.4;cursor:default;':''}">ก่อนหน้า</button>
+          <span style="padding:0 6px;">หน้า ${pageNum} / ${totalPages}</span>
+          <button onclick="goToPage(${currentPage+1})" ${toN>=totalCount?'disabled':''} style="border:1px solid var(--border);background:var(--surface);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--font);${toN>=totalCount?'opacity:.4;cursor:default;':''}">ถัดไป</button>
+        </div>
+      </div>`;
+  }
+
+  const offlineNote=offlineMode?`<div style="padding:8px 16px;background:var(--bg-warning);font-size:11px;color:#854F0B;border-bottom:1px solid var(--border);"><i class="ti ti-info-circle" style="font-size:11px;" aria-hidden="true"></i> แสดงข้อมูลที่เก็บไว้ในเครื่อง (อาจไม่ใช่ข้อมูลล่าสุด)</div>`:'';
+
+  div.innerHTML=`<div class="table-wrap">${offlineNote}<div class="table-header">พบ <strong>${totalCount}</strong> รายการ</div><div style="overflow-x:auto;"><table><thead><tr><th>Job No</th><th>ลูกค้า</th><th class="hide-sm">นาฬิกา</th><th>สถานะ</th><th class="hide-sm">วันที่รับ</th></tr></thead><tbody>${rows}</tbody></table></div>${pagination}</div>`;
+}
+
+
+
+let currentModalJobno=null;
 function openModal(jobno){
   const r=allJobs.find(x=>x.jobno===jobno);if(!r)return;
+  currentModalJobno=jobno;
   document.getElementById('m-jobno').textContent=r.jobno;
   document.getElementById('m-cat').textContent=r.category||'';
   document.getElementById('m-badge').innerHTML=badge(r.finaldesc);
@@ -518,9 +833,74 @@ function openModal(jobno){
   const rd=document.getElementById('m-repair');
   rd.style.display=(rep||remarks)?'block':'none';
   rd.innerHTML=[rep?`<strong style="color:var(--text);">รายการซ่อม:</strong> ${rep}`:'',remarks?`<strong style="color:var(--text);">หมายเหตุ:</strong> ${remarks}`:''].filter(Boolean).join('<br>');
+
+  const editor=document.getElementById('m-status-editor');
+  const noTransto=!r.transto||String(r.transto).trim()==='';
+  if(noTransto){
+    editor.style.display='block';
+    const sel=document.getElementById('m-status-select');
+    sel.value=r.finaldesc||'รอเช็ค';
+    const dateInput=document.getElementById('m-finishdate-input');
+    dateInput.value=r.finishdate||new Date().toISOString().slice(0,10);
+    onStatusSelectChange();
+    const btn=document.getElementById('m-status-btn');
+    btn.disabled=false;btn.textContent='บันทึก';
+  }else{
+    editor.style.display='none';
+  }
+
   document.getElementById('modal').classList.add('open');
 }
 function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function onStatusSelectChange(){
+  const status=document.getElementById('m-status-select').value;
+  const wrap=document.getElementById('m-finishdate-wrap');
+  const isFinished=(status==='เสร็จและจัดส่งแล้ว'||status==='งานเสร็จรอมารับ');
+  wrap.style.display=isFinished?'block':'none';
+  if(isFinished){
+    const dateInput=document.getElementById('m-finishdate-input');
+    if(!dateInput.value)dateInput.value=new Date().toISOString().slice(0,10);
+  }
+}
+
+async function updateJobStatus(){
+  if(!currentModalJobno)return;
+  const newStatus=document.getElementById('m-status-select').value;
+  const btn=document.getElementById('m-status-btn');
+  btn.disabled=true;btn.textContent='กำลังบันทึก...';
+
+  const updateData={finaldesc:newStatus};
+  const isFinished=(newStatus==='เสร็จและจัดส่งแล้ว'||newStatus==='งานเสร็จรอมารับ');
+  if(isFinished){
+    const dateVal=document.getElementById('m-finishdate-input').value;
+    updateData.finishdate=dateVal||new Date().toISOString().slice(0,10);
+  }
+
+  let saveError=null;
+  if(isOnline){
+    const {error}=await sb.from('repair_jobs').update(updateData).eq('jobno',currentModalJobno);
+    saveError=error;
+    if(error){isOnline=false;updateOfflineBadge();}
+  }
+
+  if(!isOnline){
+    if(!idb)await openIDB();
+    await queueOfflineWrite({jobno:currentModalJobno,updateData},'update');
+    saveError=null;
+  }
+
+  if(saveError){
+    alert('อัปเดตไม่สำเร็จ: '+saveError.message);
+    btn.disabled=false;btn.textContent='บันทึก';
+    return;
+  }
+
+  document.getElementById('m-badge').innerHTML=badge(newStatus);
+  btn.textContent=isOnline?'บันทึกแล้ว ✓':'บันทึกในเครื่องแล้ว (รอ sync)';
+  loadJobs(false);
+  setTimeout(()=>{btn.disabled=false;btn.textContent='บันทึก';},1800);
+}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 function toggleSvc(el,key){
@@ -555,20 +935,81 @@ function clearSig(canvasId,phId){
 
 const SVC_LABELS={battery:'เปลี่ยนถ่าน',film:'ติดฟิล์ม',band:'ปรับสาย',polish:'ขัดเบื้องต้น',time:'เซ็ตเวลา',other:'อื่นๆ'};
 
-function saveQS(){
+async function saveQS(){
   const name=document.getElementById('qs-name').value.trim();
+  const phone=document.getElementById('qs-phone').value.trim();
   const price=document.getElementById('qs-price').value;
   if(!name){alert('กรุณากรอกชื่อลูกค้า');return;}
   if(selectedSvc.size===0){alert('กรุณาเลือกรายการงาน');return;}
   if(!price||parseFloat(price)<=0){alert('กรุณากรอกราคา');return;}
   if(sigCtx['qs-sig']?.empty!==false){alert('กรุณาให้ลูกค้าเซ็นชื่อ');return;}
+
+  const btn=document.getElementById('qs-save');
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader-2" style="font-size:15px;" aria-hidden="true"></i> กำลังบันทึก...';
+
   const otherTxt=document.getElementById('qs-other-text').value.trim();
   const svcList=[...selectedSvc].map(k=>k==='other'&&otherTxt?otherTxt:SVC_LABELS[k]).join(', ');
-  const docno=document.getElementById('qs-docno').textContent;
-  const k='QS-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);updateDocNos();
+  const brand=qsSelectedBrand||document.getElementById('qs-brand-input').value||'';
+  const today=new Date().toISOString().slice(0,10);
+
+  let docno,wasOffline=false;
+
+  if(isOnline){
+    docno=document.getElementById('qs-docno').textContent;
+  }else{
+    docno=genOfflineDocNo('QS',currentShop);
+    wasOffline=true;
+  }
+
+  const row={
+    jobno:docno,
+    shop_no:currentShop,
+    jobdate:today,
+    finishdate:today,
+    clientname:name,
+    phone:phone||null,
+    category:brand||null,
+    actdesc1:svcList,
+    estimate:price,
+    goodamt:price,
+    finaldesc:'เสร็จและจัดส่งแล้ว',
+    receiver:'พนักงานสาขา',
+    transto:null
+  };
+
+  let saveError=null;
+  if(isOnline){
+    const {error}=await sb.from('repair_jobs').insert([row]);
+    saveError=error;
+    if(error){
+      isOnline=false;
+      updateOfflineBadge();
+    }
+  }
+
+  if(!isOnline){
+    if(!idb)await openIDB();
+    await queueOfflineWrite(row,'insert');
+    if(saveError===null){
+      const k='QS-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);
+    }
+    saveError=null;
+  }else{
+    const k='QS-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);updateDocNos();
+  }
+
+  if(saveError){
+    alert('บันทึกไม่สำเร็จ: '+saveError.message);
+    btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-check" style="font-size:15px;" aria-hidden="true"></i> บันทึกงานด่วน / Save';
+    return;
+  }
+
   const sumDiv=document.getElementById('qs-sum');
   const verifyUrl=`${window.location.origin}/verify.html?doc=${encodeURIComponent(docno)}&name=${encodeURIComponent(name)}&svc=${encodeURIComponent(svcList)}&price=${encodeURIComponent(price)}&branch=${encodeURIComponent(BRANCH_NAMES[currentShop]||currentShop)}`;
   const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(verifyUrl)}`;
+  const offlineNote=wasOffline?`<div style="margin-top:10px;background:var(--bg-warning);border-radius:8px;padding:8px 12px;font-size:12px;color:#854F0B;text-align:center;"><i class="ti ti-wifi-off" style="font-size:13px;vertical-align:-2px;" aria-hidden="true"></i> บันทึกแบบออฟไลน์ — จะ sync ขึ้นระบบกลางอัตโนมัติเมื่อเน็ตกลับมา</div>`:'';
   sumDiv.innerHTML=`
     <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">สรุปงาน / Summary</div>
     <div class="sum-row"><span class="sk">เลขที่</span><span class="sv">${docno}</span></div>
@@ -577,7 +1018,8 @@ function saveQS(){
     <div class="sum-row"><span class="sk">งานที่ทำ</span><span class="sv">${svcList}</span></div>
     <div class="sum-row"><span class="sk">ราคา</span><span class="sv" style="color:#27500A;">฿${Number(price).toLocaleString('th-TH')}</span></div>
     <div class="sum-row"><span class="sk">ลายเซ็น</span><span class="sv" style="color:#27500A;">เซ็นแล้ว ✓</span></div>
-    <div style="margin-top:10px;background:#EAF3DE;border-radius:8px;padding:8px 12px;font-size:12px;color:#27500A;text-align:center;">บันทึกสำเร็จ ✓</div>
+    <div style="margin-top:10px;background:#EAF3DE;border-radius:8px;padding:8px 12px;font-size:12px;color:#27500A;text-align:center;">${wasOffline?'บันทึกในเครื่องสำเร็จ ✓':'บันทึกลงระบบสำเร็จ ✓'}</div>
+    ${offlineNote}
     <div style="margin-top:12px;background:#f5f4f0;border-radius:10px;padding:14px;text-align:center;border:1px solid var(--border);">
       <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:#1a1a18;">QR Code หลักฐานรับนาฬิกา</div>
       <img src="${qrUrl}" alt="QR ${docno}" style="width:160px;height:160px;display:block;margin:0 auto 10px;border-radius:8px;border:1px solid var(--border);"/>
@@ -586,7 +1028,9 @@ function saveQS(){
       <div style="font-size:11px;color:var(--muted);">แสดง QR นี้เมื่อมารับนาฬิกา</div>
     </div>`;
   sumDiv.classList.add('show');
-  const btn=document.getElementById('qs-save');btn.innerHTML='<i class="ti ti-check" style="font-size:15px;" aria-hidden="true"></i> บันทึกแล้ว!';btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-check" style="font-size:15px;" aria-hidden="true"></i> บันทึกแล้ว!';
+
+  if(currentTab&&document.getElementById('jobs-container'))loadJobs();
 }
 
 function filterBrands(){
@@ -610,71 +1054,7 @@ function selChip(el,gid){
   document.querySelectorAll('#'+gid+' .chip').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');
 }
 
-
-let currentCameraGridId=null;
-let currentCameraStream=null;
-
-async function openCamera(gridId){
-  currentCameraGridId=gridId;
-  const overlay=document.getElementById('camera-overlay');
-  const video=document.getElementById('camera-video');
-  const hint=document.getElementById('camera-hint');
-  overlay.classList.add('open');
-  hint.textContent='กำลังเปิดกล้อง...';
-  try{
-    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-      throw new Error('เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องโดยตรง');
-    }
-    currentCameraStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},
-      audio:false
-    });
-    video.srcObject=currentCameraStream;
-    await video.play();
-    hint.textContent='จัดตำแหน่งนาฬิกา แล้วกดถ่ายภาพ';
-  }catch(err){
-    console.error(err);
-    hint.textContent='เปิดกล้องไม่ได้: กรุณาอนุญาต Camera ใน Chrome > Site settings หรือใช้ปุ่มเลือกรูปแทน';
-  }
-}
-
-function closeCamera(){
-  const overlay=document.getElementById('camera-overlay');
-  const video=document.getElementById('camera-video');
-  overlay.classList.remove('open');
-  if(currentCameraStream){
-    currentCameraStream.getTracks().forEach(t=>t.stop());
-    currentCameraStream=null;
-  }
-  video.srcObject=null;
-}
-
-function takeCameraPhoto(){
-  const video=document.getElementById('camera-video');
-  if(!currentCameraStream||!video.videoWidth){alert('ยังไม่พบภาพจากกล้อง');return;}
-  const canvas=document.getElementById('camera-canvas');
-  canvas.width=video.videoWidth;
-  canvas.height=video.videoHeight;
-  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-  const dataUrl=canvas.toDataURL('image/jpeg',0.88);
-  addPhotoDataUrl(dataUrl,currentCameraGridId);
-  closeCamera();
-}
-
-function addPhotoDataUrl(dataUrl,gridId){
-  const grid=document.getElementById(gridId);
-  if(!photoCounters[gridId])photoCounters[gridId]=0;
-  if(photoCounters[gridId]>=6)return;
-  photoCounters[gridId]++;
-  const id=gridId+photoCounters[gridId];
-  const div=document.createElement('div');
-  div.className='photo-thumb';
-  div.id=id;
-  div.innerHTML=`<img src="${dataUrl}" alt="รูป" style="width:100%;height:100%;object-fit:cover;"/>`
-    +`<button class="photo-del" onclick="document.getElementById('${id}').remove();photoCounters['${gridId}']--;" aria-label="ลบ" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;">✕</button>`;
-  grid.appendChild(div);
-}
-
+const photoCounters={};
 function addPhotos(input,gridId){
   if(!input.files||input.files.length===0)return;
   const grid=document.getElementById(gridId);
@@ -770,21 +1150,92 @@ function toggleMic(taId,iconId,lblId){
 }
 function stopMic(iconId,lblId){recognizing=false;document.getElementById(iconId).style.color='var(--muted)';document.getElementById(lblId).textContent='กดพูด';}
 
-function saveWSO(){
+async function saveWSO(){
   const name=document.getElementById('wso-name').value.trim();
+  const phone=document.getElementById('wso-phone').value.trim();
   const price=document.getElementById('wso-price').value;
   if(!name){alert('กรุณากรอกชื่อลูกค้า');return;}
   if(!price||parseFloat(price)<=0){alert('กรุณากรอกราคา');return;}
   if(sigCtx['wso-sig']?.empty!==false){alert('กรุณาให้ลูกค้าเซ็นชื่อ');return;}
-  const docno=document.getElementById('wso-docno').textContent;
-  const k='WSO-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);updateDocNos();
-  const brand=wsoSelectedBrand||document.getElementById('wso-brand-input').value||'—';
+
+  const btn=document.getElementById('wso-save');
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader-2" style="font-size:15px;" aria-hidden="true"></i> กำลังบันทึก...';
+
+  const brand=wsoSelectedBrand||document.getElementById('wso-brand-input').value||'';
+  const model=document.getElementById('wso-model').value.trim();
+  const color=document.getElementById('wso-color').value.trim();
   const deposit=document.getElementById('wso-deposit').value;
   const balance=document.getElementById('wso-balance').value;
+  const bandType=document.querySelector('#wso-band-type .chip.sel')?.textContent||'';
+  const pattern=document.querySelector('#wso-pattern .chip.sel')?.textContent||'';
+  const lining=document.querySelector('#wso-lining .chip.sel')?.textContent||'';
+  const lug=document.getElementById('wso-lug').value;
+  const buckle=document.getElementById('wso-buckle').value;
+  const remark=document.getElementById('wso-remark').value.trim();
+  const today=new Date().toISOString().slice(0,10);
+
+  const specParts=[bandType,pattern,lining?'ซับใน:'+lining:'',lug?'หัวสาย:'+lug+'มม.':'',buckle?'ปลายสาย:'+buckle+'มม.':''].filter(Boolean).join(' · ');
+
+  let docno,wasOffline=false;
+  if(isOnline){
+    docno=document.getElementById('wso-docno').textContent;
+  }else{
+    docno=genOfflineDocNo('WSO',currentShop);
+    wasOffline=true;
+  }
+
+  const row={
+    jobno:docno,
+    shop_no:currentShop,
+    jobdate:today,
+    clientname:name,
+    phone:phone||null,
+    category:[brand,model,color].filter(Boolean).join(' '),
+    actdesc1:'ใบสั่งตัดสาย: '+specParts,
+    remark1:remark||null,
+    estimate:price,
+    goodamt:deposit||null,
+    finaldesc:'รอคิวช่าง',
+    receiver:'พนักงานสาขา',
+    transto:null
+  };
+
+  let saveError=null;
+  if(isOnline){
+    const {error}=await sb.from('repair_jobs').insert([row]);
+    saveError=error;
+    if(error){
+      isOnline=false;
+      updateOfflineBadge();
+    }
+  }
+
+  if(!isOnline){
+    if(!idb)await openIDB();
+    await queueOfflineWrite(row,'insert');
+    if(saveError===null){
+      const k='WSO-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);
+    }
+    saveError=null;
+  }else{
+    const k='WSO-'+currentShop;BRANCH_SEQ[k]=(BRANCH_SEQ[k]||1)+1;saveSeq(BRANCH_SEQ);updateDocNos();
+  }
+
+  if(saveError){
+    alert('บันทึกไม่สำเร็จ: '+saveError.message);
+    btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-check" style="font-size:15px;" aria-hidden="true"></i> บันทึกใบสั่งตัดสาย / Save';
+    return;
+  }
+
   const sumDiv=document.getElementById('wso-sum');
-  sumDiv.innerHTML=`<div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">สรุป WSO</div><div class="sum-row"><span class="sk">เลขที่</span><span class="sv">${docno}</span></div><div class="sum-row"><span class="sk">ลูกค้า</span><span class="sv">${name}</span></div><div class="sum-row"><span class="sk">ยี่ห้อ</span><span class="sv">${brand}</span></div><div class="sum-row"><span class="sk">ราคาสาย</span><span class="sv" style="color:#27500A;">฿${Number(price).toLocaleString('th-TH')}</span></div>${deposit?`<div class="sum-row"><span class="sk">มัดจำ</span><span class="sv">฿${Number(deposit).toLocaleString('th-TH')}</span></div>`:''}<div class="sum-row"><span class="sk">ลายเซ็น</span><span class="sv" style="color:#27500A;">เซ็นแล้ว ✓</span></div><div style="margin-top:8px;background:#EAF3DE;border-radius:8px;padding:8px 10px;font-size:12px;color:#27500A;">บันทึกสำเร็จ ✓</div>`;
+  const offlineNote=wasOffline?`<div style="margin-top:8px;background:var(--bg-warning);border-radius:8px;padding:8px 10px;font-size:12px;color:#854F0B;"><i class="ti ti-wifi-off" style="font-size:13px;vertical-align:-2px;" aria-hidden="true"></i> บันทึกแบบออฟไลน์ — จะ sync เมื่อเน็ตกลับมา</div>`:'';
+  sumDiv.innerHTML=`<div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">สรุป WSO</div><div class="sum-row"><span class="sk">เลขที่</span><span class="sv">${docno}</span></div><div class="sum-row"><span class="sk">ลูกค้า</span><span class="sv">${name}</span></div><div class="sum-row"><span class="sk">ยี่ห้อ</span><span class="sv">${brand||'—'}</span></div><div class="sum-row"><span class="sk">ราคาสาย</span><span class="sv" style="color:#27500A;">฿${Number(price).toLocaleString('th-TH')}</span></div>${deposit?`<div class="sum-row"><span class="sk">มัดจำ</span><span class="sv">฿${Number(deposit).toLocaleString('th-TH')}</span></div>`:''}<div class="sum-row"><span class="sk">ลายเซ็น</span><span class="sv" style="color:#27500A;">เซ็นแล้ว ✓</span></div><div style="margin-top:8px;background:#EAF3DE;border-radius:8px;padding:8px 10px;font-size:12px;color:#27500A;">${wasOffline?'บันทึกในเครื่องสำเร็จ ✓':'บันทึกลงระบบสำเร็จ ✓'}</div>${offlineNote}`;
   sumDiv.classList.add('show');
-  const btn=document.getElementById('wso-save');btn.innerHTML='<i class="ti ti-check" style="font-size:15px;" aria-hidden="true"></i> บันทึกแล้ว!';btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-check" style="font-size:15px;" aria-hidden="true"></i> บันทึกแล้ว!';
+
+  if(currentTab&&document.getElementById('jobs-container'))loadJobs();
 }
 </script>
 </body>
