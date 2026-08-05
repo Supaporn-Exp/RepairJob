@@ -468,11 +468,11 @@ function openIDB(){
       const db=e.target.result;
       if(!db.objectStoreNames.contains(STORE_PENDING)){
         const s=db.createObjectStore(STORE_PENDING,{keyPath:'localId'});
-        s.createIndex('shop_no','shop_no',{unique:false});
+        s.createIndex('owner_branch_id','owner_branch_id',{unique:false});
       }
       if(!db.objectStoreNames.contains(STORE_CACHE)){
         const s2=db.createObjectStore(STORE_CACHE,{keyPath:'jobno'});
-        s2.createIndex('shop_no','shop_no',{unique:false});
+        s2.createIndex('owner_branch_id','owner_branch_id',{unique:false});
       }
     };
     req.onsuccess=e=>{idb=e.target.result;resolve(idb);};
@@ -493,7 +493,7 @@ function idbGetAll(storeName,shopNo){
   return new Promise((resolve,reject)=>{
     const tx=idb.transaction(storeName,'readonly');
     const store=tx.objectStore(storeName);
-    const idx=store.index('shop_no');
+    const idx=store.index('owner_branch_id');
     const req=shopNo?idx.getAll(shopNo):store.getAll();
     req.onsuccess=()=>resolve(req.result||[]);
     req.onerror=e=>reject(e);
@@ -532,7 +532,7 @@ async function queueOfflineWrite(row,opType){
   const localId='pend_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
   await idbAdd(STORE_PENDING,{
     localId,
-    shop_no:row.shop_no||currentShop,
+    owner_branch_id:row.owner_branch_id||currentShop,
     op:opType,
     row,
     queuedAt:new Date().toISOString(),
@@ -700,9 +700,9 @@ async function loadJobs(resetPage=true){
 
   if(isOnline){
     try{
-      let query=sb.from('repair_jobs').select('*',{count:'exact'}).eq('shop_no',currentShop);
+      let query=sb.from('repair_jobs').select('*',{count:'exact'}).eq('owner_branch_id',currentShop);
       if(currentTab==='active'){
-        query=query.in('finaldesc',ACTIVE_STATUSES);
+        query=query.in('job_status',ACTIVE_STATUSES);
       }
       if(currentSearchQ){
         query=query.or(`jobno.ilike.%${currentSearchQ}%,clientname.ilike.%${currentSearchQ}%`);
@@ -719,7 +719,7 @@ async function loadJobs(resetPage=true){
 
       if(idb&&resetPage&&currentPage===0&&!currentSearchQ){
         await idbClearCache(currentShop);
-        for(const r of allJobs){await idbAdd(STORE_CACHE,{...r,shop_no:currentShop});}
+        for(const r of allJobs){await idbAdd(STORE_CACHE,{...r,owner_branch_id:currentShop});}
       }
 
       const pending=idb?await idbGetAll(STORE_PENDING,currentShop):[];
@@ -825,23 +825,23 @@ function openModal(jobno){
   document.getElementById('m-jobno').textContent=r.jobno;
   document.getElementById('m-cat').textContent=r.category||'';
   document.getElementById('m-badge').innerHTML=badge(r.finaldesc);
-  const warranty=r.iswarranty==='true'||r.iswarranty===true?'งานประกัน':null;
-  const details=[['ลูกค้า',r.clientname],['โทรศัพท์',r.phone],['วันที่รับงาน',r.jobdate],['วันนัดลูกค้า',r.appointdate],['วันที่ตกลงซ่อม',r.confirmdate],['วันที่ส่งมอบ',r.finishdate],['Serial No.',r.serialno],['ราคาประเมิน',r.estimate?'฿'+parseFloat(r.estimate||0).toLocaleString('th-TH'):null],['ช่างผู้รับผิดชอบ',r.techman],['ผู้รับงาน',r.receiver],['ประกัน',warranty]].filter(([,v])=>v);
+  const warranty=r.is_warranty==='true'||r.is_warranty===true||r.is_warranty===1?'งานประกัน':null;
+  const details=[['ลูกค้า',r.clientname],['โทรศัพท์',r.phone],['วันที่รับงาน',r.jobdate],['วันนัดลูกค้า',r.appoint_date],['วันที่ตกลงซ่อม',r.approved_at],['วันที่ส่งมอบ',r.delivered_at],['Serial No.',r.serialno],['ราคาประเมิน',r.estimate_amount?'฿'+parseFloat(r.estimate_amount||0).toLocaleString('th-TH'):null],['ช่างผู้รับผิดชอบ',r.technician_user_id],['ผู้รับงาน',r.receiver_user_id],['ประกัน',warranty]].filter(([,v])=>v);
   document.getElementById('m-grid').innerHTML=details.map(([k,v])=>`<div class="ik">${k}</div><div class="iv">${v}</div>`).join('');
-  const rep=[r.actdesc1,r.actdesc2].filter(Boolean).join(' · ');
-  const remarks=[r.remark1,r.remark2].filter(Boolean).join(' | ');
+  const rep=[r.service_desc,r.service_desc2].filter(Boolean).join(' · ');
+  const remarks=[r.remark_customer,r.remark_internal].filter(Boolean).join(' | ');
   const rd=document.getElementById('m-repair');
   rd.style.display=(rep||remarks)?'block':'none';
   rd.innerHTML=[rep?`<strong style="color:var(--text);">รายการซ่อม:</strong> ${rep}`:'',remarks?`<strong style="color:var(--text);">หมายเหตุ:</strong> ${remarks}`:''].filter(Boolean).join('<br>');
 
   const editor=document.getElementById('m-status-editor');
-  const noTransto=!r.transto||String(r.transto).trim()==='';
+  const noTransto=!r.transfer_to||String(r.transfer_to).trim()==='';
   if(noTransto){
     editor.style.display='block';
     const sel=document.getElementById('m-status-select');
-    sel.value=r.finaldesc||'รอเช็ค';
+    sel.value=r.job_status||'รอเช็ค';
     const dateInput=document.getElementById('m-finishdate-input');
-    dateInput.value=r.finishdate||new Date().toISOString().slice(0,10);
+    dateInput.value=r.delivered_at||new Date().toISOString().slice(0,10);
     onStatusSelectChange();
     const btn=document.getElementById('m-status-btn');
     btn.disabled=false;btn.textContent='บันทึก';
@@ -870,11 +870,11 @@ async function updateJobStatus(){
   const btn=document.getElementById('m-status-btn');
   btn.disabled=true;btn.textContent='กำลังบันทึก...';
 
-  const updateData={finaldesc:newStatus};
+  const updateData={job_status:newStatus};
   const isFinished=(newStatus==='เสร็จและจัดส่งแล้ว'||newStatus==='งานเสร็จรอมารับ');
   if(isFinished){
     const dateVal=document.getElementById('m-finishdate-input').value;
-    updateData.finishdate=dateVal||new Date().toISOString().slice(0,10);
+    updateData.delivered_at=dateVal||new Date().toISOString().slice(0,10);
   }
 
   let saveError=null;
@@ -964,18 +964,18 @@ async function saveQS(){
 
   const row={
     jobno:docno,
-    shop_no:currentShop,
+    owner_branch_id:currentShop,
     jobdate:today,
-    finishdate:today,
+    delivered_at:today,
     clientname:name,
     phone:phone||null,
     category:brand||null,
-    actdesc1:svcList,
-    estimate:price,
-    goodamt:price,
-    finaldesc:'เสร็จและจัดส่งแล้ว',
-    receiver:'พนักงานสาขา',
-    transto:null
+    service_desc:svcList,
+    estimate_amount:price,
+    final_amount:price,
+    job_status:'เสร็จและจัดส่งแล้ว',
+    receiver_user_id:'พนักงานสาขา',
+    transfer_to:null
   };
 
   let saveError=null;
@@ -1187,18 +1187,18 @@ async function saveWSO(){
 
   const row={
     jobno:docno,
-    shop_no:currentShop,
+    owner_branch_id:currentShop,
     jobdate:today,
     clientname:name,
     phone:phone||null,
     category:[brand,model,color].filter(Boolean).join(' '),
-    actdesc1:'ใบสั่งตัดสาย: '+specParts,
-    remark1:remark||null,
-    estimate:price,
-    goodamt:deposit||null,
-    finaldesc:'รอคิวช่าง',
-    receiver:'พนักงานสาขา',
-    transto:null
+    service_desc:'ใบสั่งตัดสาย: '+specParts,
+    remark_customer:remark||null,
+    estimate_amount:price,
+    deposit_amount:deposit||null,
+    job_status:'รอคิวช่าง',
+    receiver_user_id:'พนักงานสาขา',
+    transfer_to:null
   };
 
   let saveError=null;

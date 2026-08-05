@@ -197,16 +197,16 @@ async function loadStats() {
   document.getElementById('last-upload-text').textContent =
     lastUpload ? `อัปเดตล่าสุด: ${lastUpload}` : 'ยังไม่เคยอัปโหลดข้อมูล';
 
-  // ดึง finaldesc แบบ pagination เพื่อไม่ให้ timeout
+  // ดึง job_status แบบ pagination เพื่อไม่ให้ timeout
   const countMap = {};
   const PAGE = 1000;
   let page = 0;
   while (true) {
     const { data: rows, error } = await sb.from('repair_jobs')
-      .select('finaldesc')
+      .select('job_status')
       .range(page * PAGE, (page + 1) * PAGE - 1);
     if (error || !rows || rows.length === 0) break;
-    rows.forEach(r => { countMap[r.finaldesc] = (countMap[r.finaldesc]||0)+1; });
+    rows.forEach(r => { countMap[r.job_status] = (countMap[r.job_status]||0)+1; });
     if (rows.length < PAGE) break;
     page++;
   }
@@ -241,28 +241,27 @@ function handleDrop(e) {
 }
 
 const FIELD_ALIASES = {
-  finalcase:   ['finalcase'],
-  finaldesc:   ['finaldesc','สถานะ','status'],
-  shop_no:     ['shop_no','shopno','สาขา','shop no'],
-  jobno:       ['jobno','job no','job_no','เลขที่งาน','job number'],
-  jobdate:     ['jobdate','วันที่รับงาน','วันที่'],
-  iswarranty:  ['iswarranty','ประกัน','warranty'],
-  category:    ['category','รายละเอียดนาฬิกา','ประเภท','รายละเอียด'],
-  serialno:    ['serialno','serial','serial no','เลข serial'],
-  estimate:    ['estimate','ราคา','ค่าซ่อม','ราคาประเมิน'],
-  appointdate: ['appointdate','วันนัด','วันที่นัด'],
-  confirmdate: ['confirmdate','วันตกลง','วันที่ตกลง'],
-  goodamt:     ['goodamt','ค่าอะไหล่','อะไหล่'],
-  clientname:  ['clientname','ชื่อลูกค้า','ลูกค้า','ชื่อ'],
-  phone:       ['phone','โทรศัพท์','เบอร์','เบอร์โทร'],
-  actdesc1:    ['actdesc1','รายการซ่อม 1','รายการ1'],
-  actdesc2:    ['actdesc2','รายการซ่อม 2','รายการ2'],
-  receiver:    ['receiver','ผู้รับงาน'],
-  techman:     ['techman','ช่าง'],
-  finishdate:  ['finishdate','วันที่เสร็จ','วันเสร็จ'],
-  remark1:     ['remark1','หมายเหตุ1','หมายเหตุ'],
-  remark2:     ['remark2','หมายเหตุ2'],
-  transto:     ['transto','ส่งไปที่'],
+  job_status:       ['job_status','finaldesc','สถานะ','status'],
+  owner_branch_id:  ['shop_no','owner_branch_id','shopno','สาขา','shop no'],
+  jobno:            ['jobno','job no','job_no','เลขที่งาน','job number'],
+  jobdate:          ['jobdate','วันที่รับงาน','วันที่'],
+  is_warranty:      ['iswarranty','is_warranty','ประกัน','warranty'],
+  category:         ['category','รายละเอียดนาฬิกา','ประเภท','รายละเอียด'],
+  serialno:         ['serialno','serial','serial no','เลข serial'],
+  estimate_amount:  ['estimate','estimate_amount','ราคา','ค่าซ่อม','ราคาประเมิน'],
+  appoint_date:     ['appointdate','appoint_date','วันนัด','วันที่นัด'],
+  approved_at:      ['confirmdate','approved_at','วันตกลง','วันที่ตกลง'],
+  final_amount:     ['goodamt','final_amount','ค่าอะไหล่','อะไหล่'],
+  clientname:       ['clientname','ชื่อลูกค้า','ลูกค้า','ชื่อ'],
+  phone:            ['phone','โทรศัพท์','เบอร์','เบอร์โทร'],
+  service_desc:     ['service_desc','actdesc1','รายการซ่อม 1','รายการ1'],
+  service_desc2:    ['service_desc2','actdesc2','รายการซ่อม 2','รายการ2'],
+  receiver_user_id: ['receiver','receiver_user_id','ผู้รับงาน'],
+  technician_user_id:['techman','technician_user_id','ช่าง'],
+  delivered_at:     ['finishdate','delivered_at','วันที่เสร็จ','วันเสร็จ'],
+  remark_customer:  ['remark1','remark_customer','หมายเหตุ1','หมายเหตุ'],
+  remark_internal:  ['remark2','remark_internal','หมายเหตุ2'],
+  transfer_to:      ['transto','transfer_to','ส่งไปที่'],
 };
 
 async function handleFile(file) {
@@ -303,17 +302,27 @@ async function handleFile(file) {
 
   const records = rows
     .map(row => ({
-      jobno:       g(row,'jobno'),       finaldesc:   g(row,'finaldesc'),
-      shop_no:     g(row,'shop_no'),     jobdate:     g(row,'jobdate'),
-      iswarranty:  g(row,'iswarranty'),  category:    g(row,'category'),
-      serialno:    g(row,'serialno'),    estimate:    g(row,'estimate'),
-      appointdate: g(row,'appointdate'), confirmdate: g(row,'confirmdate'),
-      goodamt:     g(row,'goodamt'),     clientname:  g(row,'clientname'),
-      phone:       g(row,'phone'),       actdesc1:    g(row,'actdesc1'),
-      actdesc2:    g(row,'actdesc2'),    receiver:    g(row,'receiver'),
-      techman:     g(row,'techman'),     finishdate:  g(row,'finishdate'),
-      remark1:     g(row,'remark1'),     remark2:     g(row,'remark2'),
-      transto:     g(row,'transto'),     finalcase:   g(row,'finalcase'),
+      jobno:               g(row,'jobno'),
+      job_status:          g(row,'job_status'),
+      owner_branch_id:     g(row,'owner_branch_id'),
+      jobdate:             g(row,'jobdate'),
+      is_warranty:         g(row,'is_warranty'),
+      category:            g(row,'category'),
+      serialno:            g(row,'serialno'),
+      estimate_amount:     g(row,'estimate_amount'),
+      appoint_date:        g(row,'appoint_date'),
+      approved_at:         g(row,'approved_at'),
+      final_amount:        g(row,'final_amount'),
+      clientname:          g(row,'clientname'),
+      phone:               g(row,'phone'),
+      service_desc:        g(row,'service_desc'),
+      service_desc2:       g(row,'service_desc2'),
+      receiver_user_id:    g(row,'receiver_user_id'),
+      technician_user_id:  g(row,'technician_user_id'),
+      delivered_at:        g(row,'delivered_at'),
+      remark_customer:     g(row,'remark_customer'),
+      remark_internal:     g(row,'remark_internal'),
+      transfer_to:         g(row,'transfer_to'),
     }))
     .filter(r => r.jobno);
 
