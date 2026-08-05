@@ -411,18 +411,19 @@ tbody tr:hover td{background:var(--bg);}
         <i class="ti ti-edit" style="font-size:12px;" aria-hidden="true"></i> อัปเดตสถานะ / Update status
       </div>
       <select id="m-status-select" onchange="onStatusSelectChange()" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);outline:none;background:var(--bg);margin-bottom:8px;">
-        <option value="รอเช็ค">รอเช็ค</option>
-        <option value="กำลังซ่อม">กำลังซ่อม</option>
-        <option value="รอ Confirm">รอ Confirm</option>
-        <option value="สั่งแล้วรออะไหล่">สั่งแล้วรออะไหล่</option>
-        <option value="รอหาอะหลั่ย">รอหาอะหลั่ย</option>
-        <option value="เทียบเวลา">เทียบเวลา</option>
-        <option value="งานเสร็จรอมารับ">งานเสร็จรอมารับ</option>
-        <option value="เสร็จและจัดส่งแล้ว">เสร็จและจัดส่งแล้ว</option>
-        <option value="ไม่ซ่อมรับคืนแล้ว">ไม่ซ่อมรับคืนแล้ว</option>
-        <option value="รอคืนลูกค้าไม่ซ่อม">รอคืนลูกค้าไม่ซ่อม</option>
-        <option value="คืนไม่มีอะไหล่">คืนไม่มีอะไหล่</option>
-        <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
+        <option value="NEW">รับงานใหม่</option>
+        <option value="WAITING_CHECK">รอเช็ค</option>
+        <option value="CHECKING">กำลังตรวจ</option>
+        <option value="WAITING_QUOTATION">รอใบเสนอราคา</option>
+        <option value="WAITING_CUSTOMER_APPROVAL">รอลูกค้าอนุมัติ</option>
+        <option value="CUSTOMER_APPROVED">ลูกค้าอนุมัติแล้ว</option>
+        <option value="CUSTOMER_REJECTED">ลูกค้าไม่อนุมัติ</option>
+        <option value="IN_PROGRESS">กำลังซ่อม</option>
+        <option value="QC">ตรวจคุณภาพ</option>
+        <option value="READY_FOR_PICKUP">งานเสร็จรอมารับ</option>
+        <option value="DELIVERED">เสร็จและจัดส่งแล้ว</option>
+        <option value="CLOSED">ปิดงาน</option>
+        <option value="CANCELLED">ยกเลิก</option>
       </select>
       <div id="m-finishdate-wrap" style="display:none;margin-bottom:8px;">
         <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;">วันที่เสร็จงาน / Finish date</label>
@@ -447,8 +448,37 @@ function saveSeq(seq){try{localStorage.setItem('expert_seq',JSON.stringify(seq))
 const BRANCH_SEQ=loadSeq();
 const BRANDS=['A. Lange & Söhne','Alpina','Audemars Piguet','Ball Watch','Baume & Mercier','Bell & Ross','Blancpain','Breguet','Breitling','Bulgari','Cartier','Casio','Certina','Chopard','Citizen','Corum','Diesel','Doxa','Eterna','Fortis','Frederique Constant','Girard-Perregaux','Grand Seiko','Hamilton','Hublot','IWC','Jaeger-LeCoultre','Longines','Maurice Lacroix','Mido','Montblanc','Movado','Nomos','Omega','Oris','Panerai','Patek Philippe','Piaget','Porsche Design','Rado','Raymond Weil','Richard Mille','Rolex','Seiko','TAG Heuer','Tissot','Tudor','Ulysse Nardin','Vacheron Constantin','Zenith'];
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-const STATUS_STYLE={'เสร็จและจัดส่งแล้ว':{bg:'#e8f5e0',color:'#2e6b10'},'งานเสร็จรอมารับ':{bg:'#d4f2e7',color:'#0a6644'},'กำลังซ่อม':{bg:'#ddeeff',color:'#1254a0'},'กำลังซ่อม+ส่งทำ':{bg:'#ddeeff',color:'#1254a0'},'เทียบเวลา':{bg:'#ddeeff',color:'#1254a0'},'รอคิวช่าง':{bg:'#fff0d4',color:'#8a4a00'},'รอเช็ค':{bg:'#fff0d4',color:'#7a4500'},'สั่งแล้วรออะไหล่':{bg:'#fff0d4',color:'#7a4500'},'รอหาอะหลั่ย':{bg:'#fff0d4',color:'#7a4500'},'ส่งทำ':{bg:'#fff0d4',color:'#7a4500'},'รอ Confirm':{bg:'#fff0d4',color:'#7a4500'},'ไม่ซ่อมรับคืนแล้ว':{bg:'#f0eeea',color:'#666'},'รอคืนลูกค้าไม่ซ่อม':{bg:'#f0eeea',color:'#666'},'เก็บที่ออฟฟิศ':{bg:'#f0eeea',color:'#666'},'คืนไม่มีอะไหล่':{bg:'#fde8e8',color:'#9b2222'},'ติดต่อไม่ได้':{bg:'#fde8e8',color:'#9b2222'}};
-const ACTIVE_STATUSES=['กำลังซ่อม','รอคิวช่าง','รอเช็ค','สั่งแล้วรออะไหล่','ส่งทำ','รอหาอะหลั่ย','รอ Confirm','เทียบเวลา','กำลังซ่อม+ส่งทำ','งานเสร็จรอมารับ','เก็บที่ออฟฟิศ','ติดต่อไม่ได้'];
+const STATUS_LABEL={
+  'NEW':'รับงานใหม่',
+  'WAITING_CHECK':'รอเช็ค',
+  'CHECKING':'กำลังตรวจ',
+  'WAITING_QUOTATION':'รอใบเสนอราคา',
+  'WAITING_CUSTOMER_APPROVAL':'รอลูกค้าอนุมัติ',
+  'CUSTOMER_APPROVED':'ลูกค้าอนุมัติแล้ว',
+  'CUSTOMER_REJECTED':'ลูกค้าไม่อนุมัติ',
+  'IN_PROGRESS':'กำลังซ่อม',
+  'QC':'ตรวจคุณภาพ',
+  'READY_FOR_PICKUP':'งานเสร็จรอมารับ',
+  'DELIVERED':'เสร็จและจัดส่งแล้ว',
+  'CLOSED':'ปิดงาน',
+  'CANCELLED':'ยกเลิก',
+};
+const STATUS_STYLE={
+  'DELIVERED':{bg:'#e8f5e0',color:'#2e6b10'},
+  'READY_FOR_PICKUP':{bg:'#d4f2e7',color:'#0a6644'},
+  'IN_PROGRESS':{bg:'#ddeeff',color:'#1254a0'},
+  'CHECKING':{bg:'#ddeeff',color:'#1254a0'},
+  'QC':{bg:'#ddeeff',color:'#1254a0'},
+  'NEW':{bg:'#fff0d4',color:'#8a4a00'},
+  'WAITING_CHECK':{bg:'#fff0d4',color:'#7a4500'},
+  'WAITING_QUOTATION':{bg:'#fff0d4',color:'#7a4500'},
+  'WAITING_CUSTOMER_APPROVAL':{bg:'#fff0d4',color:'#7a4500'},
+  'CUSTOMER_APPROVED':{bg:'#EAF3DE',color:'#27500A'},
+  'CUSTOMER_REJECTED':{bg:'#fde8e8',color:'#9b2222'},
+  'CLOSED':{bg:'#f0eeea',color:'#666'},
+  'CANCELLED':{bg:'#fde8e8',color:'#9b2222'},
+};
+const ACTIVE_STATUSES=['NEW','WAITING_CHECK','CHECKING','WAITING_QUOTATION','WAITING_CUSTOMER_APPROVAL','CUSTOMER_APPROVED','IN_PROGRESS','QC','READY_FOR_PICKUP'];
 let currentShop=null,currentTab='active',allJobs=[],selectedSvc=new Set(),wsoSelectedBrand='',wsoPhotoCount=0,recognizing=false,recognition=null;
 let sigCtx={};
 
@@ -629,7 +659,7 @@ function setupConnectionMonitor(){
 }
 /* =================== END OFFLINE LAYER =================== */
 
-function badge(s){const st=STATUS_STYLE[s]||{bg:'#f0eeea',color:'#666'};return `<span class="badge" style="background:${st.bg};color:${st.color};">${s||'—'}</span>`;}
+function badge(s){const st=STATUS_STYLE[s]||{bg:'#f0eeea',color:'#666'};const label=STATUS_LABEL[s]||s||'—';return `<span class="badge" style="background:${st.bg};color:${st.color};">${label}</span>`;}
 function fmt(v){return v&&v!==''?v:'—';}
 function fmtMoney(v){const n=parseFloat(v);return isNaN(n)||n===0?'—':'฿'+n.toLocaleString('th-TH');}
 function getDocNo(prefix,shop){const seq=String(BRANCH_SEQ[prefix+'-'+shop]||1).padStart(4,'0');return `${prefix}-${shop}-${seq}`;}
@@ -752,7 +782,7 @@ async function loadJobs(resetPage=true){
   });
 
   if(currentTab==='active'){
-    merged=merged.filter(r=>ACTIVE_STATUSES.includes(r.finaldesc));
+    merged=merged.filter(r=>ACTIVE_STATUSES.includes(r.job_status));
   }
   if(currentSearchQ){
     const q=currentSearchQ.toLowerCase();
@@ -856,7 +886,7 @@ function closeModal(){document.getElementById('modal').classList.remove('open');
 function onStatusSelectChange(){
   const status=document.getElementById('m-status-select').value;
   const wrap=document.getElementById('m-finishdate-wrap');
-  const isFinished=(status==='เสร็จและจัดส่งแล้ว'||status==='งานเสร็จรอมารับ');
+  const isFinished=(status==='DELIVERED'||status==='READY_FOR_PICKUP'||status==='CLOSED'||status==='CANCELLED');
   wrap.style.display=isFinished?'block':'none';
   if(isFinished){
     const dateInput=document.getElementById('m-finishdate-input');
@@ -871,7 +901,7 @@ async function updateJobStatus(){
   btn.disabled=true;btn.textContent='กำลังบันทึก...';
 
   const updateData={job_status:newStatus};
-  const isFinished=(newStatus==='เสร็จและจัดส่งแล้ว'||newStatus==='งานเสร็จรอมารับ');
+  const isFinished=(newStatus==='DELIVERED'||newStatus==='READY_FOR_PICKUP'||newStatus==='CLOSED'||newStatus==='CANCELLED');
   if(isFinished){
     const dateVal=document.getElementById('m-finishdate-input').value;
     updateData.delivered_at=dateVal||new Date().toISOString().slice(0,10);

@@ -322,6 +322,44 @@ async function handleFile(file) {
     return null;
   }
 
+  // mapping สถานะภาษาไทยเดิม -> ค่าใหม่ใน schema
+  const STATUS_MAP = {
+    // job_status
+    'NEW':'NEW','new':'NEW',
+    'รอเช็ค':'WAITING_CHECK','รอตรวจ':'WAITING_CHECK','WAITING_CHECK':'WAITING_CHECK',
+    'กำลังตรวจ':'CHECKING','กำลังเช็ค':'CHECKING','CHECKING':'CHECKING',
+    'รอใบเสนอราคา':'WAITING_QUOTATION','WAITING_QUOTATION':'WAITING_QUOTATION',
+    'รอ Confirm':'WAITING_CUSTOMER_APPROVAL','รอ confirm':'WAITING_CUSTOMER_APPROVAL',
+    'รอลูกค้าอนุมัติ':'WAITING_CUSTOMER_APPROVAL','WAITING_CUSTOMER_APPROVAL':'WAITING_CUSTOMER_APPROVAL',
+    'CUSTOMER_APPROVED':'CUSTOMER_APPROVED',
+    'CUSTOMER_REJECTED':'CUSTOMER_REJECTED','ไม่อนุมัติ':'CUSTOMER_REJECTED',
+    'กำลังซ่อม':'IN_PROGRESS','กำลังซ่อม+ส่งทำ':'IN_PROGRESS','IN_PROGRESS':'IN_PROGRESS',
+    'รอคิวช่าง':'IN_PROGRESS','ส่งทำ':'IN_PROGRESS','รอหาอะหลั่ย':'IN_PROGRESS',
+    'สั่งแล้วรออะไหล่':'IN_PROGRESS','เทียบเวลา':'IN_PROGRESS',
+    'QC':'QC','ตรวจคุณภาพ':'QC',
+    'งานเสร็จรอมารับ':'READY_FOR_PICKUP','READY_FOR_PICKUP':'READY_FOR_PICKUP',
+    'เสร็จและจัดส่งแล้ว':'DELIVERED','DELIVERED':'DELIVERED',
+    'เก็บที่ออฟฟิศ':'DELIVERED',
+    'CLOSED':'CLOSED','ปิดงาน':'CLOSED',
+    'ไม่ซ่อมรับคืนแล้ว':'CANCELLED','รอคืนลูกค้าไม่ซ่อม':'CANCELLED',
+    'คืนไม่มีอะไหล่':'CANCELLED','ติดต่อไม่ได้':'CANCELLED','CANCELLED':'CANCELLED',
+  };
+  const JOB_TYPE_MAP = {
+    'REPAIR_JOB':'REPAIR_JOB','repair':'REPAIR_JOB',
+    'QUICK_SERVICE':'QUICK_SERVICE',
+    'CUSTOM_STRAP':'CUSTOM_STRAP',
+  };
+
+  function mapStatus(v) {
+    if (!v) return 'NEW';
+    const s = String(v).trim();
+    return STATUS_MAP[s] || 'NEW';
+  }
+  function mapJobType(v) {
+    if (!v) return 'REPAIR_JOB';
+    return JOB_TYPE_MAP[String(v).trim()] || 'REPAIR_JOB';
+  }
+
   const BOOL_COLS = new Set(['is_warranty','is_waiting_parts','is_outsource']);
   const NUM_COLS  = new Set(['estimate_amount','deposit_amount','approved_amount','final_amount']);
 
@@ -348,7 +386,8 @@ async function handleFile(file) {
       owner_branch_id:     g(row,'owner_branch_id'),
       current_branch_id:   g(row,'owner_branch_id'),
       jobdate:             g(row,'jobdate') || new Date().toISOString().slice(0,10),
-      job_status:          g(row,'job_status') || 'NEW',
+      job_status:          mapStatus(g(row,'job_status')),
+      job_type:            'REPAIR_JOB',
       is_warranty:         g(row,'is_warranty') || false,
       category:            g(row,'category'),
       serialno:            g(row,'serialno'),
