@@ -293,11 +293,41 @@ async function handleFile(file) {
     }
   }
 
+  // date columns ใน schema ใหม่เป็น timestamp ต้องการ ISO format YYYY-MM-DD
+  const DATE_COLS = new Set(['appoint_date','approved_at','delivered_at','jobdate']);
+
+  function toISO(v) {
+    if (!v) return null;
+    if (v instanceof Date) {
+      // Excel date object
+      const y = v.getFullYear();
+      const m = String(v.getMonth()+1).padStart(2,'0');
+      const d = String(v.getDate()).padStart(2,'0');
+      return `${y}-${m}-${d}`;
+    }
+    const s = String(v).trim();
+    if (!s) return null;
+    // DD/MM/YYYY หรือ DD/MM/YY
+    const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (dmy) {
+      let [, dd, mm, yy] = dmy;
+      if (yy.length === 2) yy = '25' + yy; // ปี 2 หลัก → เติม 25xx (ปีพุทธศักราช)
+      // ถ้าเป็น พ.ศ. (> 2500) ให้แปลงเป็น ค.ศ.
+      let year = parseInt(yy);
+      if (year > 2400) year -= 543;
+      return `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+    }
+    // YYYY-MM-DD already
+    if (s.match(/^\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+    return null;
+  }
+
   function g(row, field) {
     const k = colMap[field]; if (!k) return null;
     const v = row[k];
     if (v === null || v === undefined || v === '') return null;
-    if (v instanceof Date) return v.toLocaleDateString('th-TH');
+    if (DATE_COLS.has(field)) return toISO(v);
+    if (v instanceof Date) return toISO(v);
     return String(v).trim() || null;
   }
 
