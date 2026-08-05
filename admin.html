@@ -322,22 +322,34 @@ async function handleFile(file) {
     return null;
   }
 
+  const BOOL_COLS = new Set(['is_warranty','is_waiting_parts','is_outsource']);
+  const NUM_COLS  = new Set(['estimate_amount','deposit_amount','approved_amount','final_amount']);
+
   function g(row, field) {
     const k = colMap[field]; if (!k) return null;
     const v = row[k];
     if (v === null || v === undefined || v === '') return null;
     if (DATE_COLS.has(field)) return toISO(v);
     if (v instanceof Date) return toISO(v);
+    if (BOOL_COLS.has(field)) {
+      const s = String(v).trim().toLowerCase();
+      return s === 'true' || s === '1' || s === 'yes' || s === 'true';
+    }
+    if (NUM_COLS.has(field)) {
+      const n = parseFloat(String(v).replace(/,/g,''));
+      return isNaN(n) ? 0 : n;
+    }
     return String(v).trim() || null;
   }
 
   const records = rows
     .map(row => ({
       jobno:               g(row,'jobno'),
-      job_status:          g(row,'job_status'),
       owner_branch_id:     g(row,'owner_branch_id'),
-      jobdate:             g(row,'jobdate'),
-      is_warranty:         g(row,'is_warranty'),
+      current_branch_id:   g(row,'owner_branch_id'),
+      jobdate:             g(row,'jobdate') || new Date().toISOString().slice(0,10),
+      job_status:          g(row,'job_status') || 'NEW',
+      is_warranty:         g(row,'is_warranty') || false,
       category:            g(row,'category'),
       serialno:            g(row,'serialno'),
       estimate_amount:     g(row,'estimate_amount'),
