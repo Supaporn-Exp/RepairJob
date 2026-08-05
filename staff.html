@@ -826,7 +826,7 @@ function openModal(jobno){
   document.getElementById('m-cat').textContent=r.category||'';
   document.getElementById('m-badge').innerHTML=badge(r.finaldesc);
   const warranty=r.is_warranty==='true'||r.is_warranty===true||r.is_warranty===1?'งานประกัน':null;
-  const details=[['ลูกค้า',r.clientname],['โทรศัพท์',r.phone],['วันที่รับงาน',r.jobdate],['วันนัดลูกค้า',r.appoint_date],['วันที่ตกลงซ่อม',r.approved_at],['วันที่ส่งมอบ',r.delivered_at],['Serial No.',r.serialno],['ราคาประเมิน',r.estimate_amount?'฿'+parseFloat(r.estimate_amount||0).toLocaleString('th-TH'):null],['ช่างผู้รับผิดชอบ',r.technician_user_id],['ผู้รับงาน',r.receiver_user_id],['ประกัน',warranty]].filter(([,v])=>v);
+  const details=[['ลูกค้า',r.clientname],['โทรศัพท์',r.phone],['วันที่รับงาน',r.jobdate],['วันนัดลูกค้า',r.appoint_date],['วันที่ตกลงซ่อม',r.approved_at],['วันที่ส่งมอบ',r.delivered_at],['Serial No.',r.serialno],['ราคาประเมิน',r.estimate_amount?'฿'+parseFloat(r.estimate_amount||0).toLocaleString('th-TH'):null],['ช่างผู้รับผิดชอบ',r.technician_user_id],['ผู้รับงาน',r.receiver_user_id||null],['ประกัน',warranty]].filter(([,v])=>v);
   document.getElementById('m-grid').innerHTML=details.map(([k,v])=>`<div class="ik">${k}</div><div class="iv">${v}</div>`).join('');
   const rep=[r.service_desc,r.service_desc2].filter(Boolean).join(' · ');
   const remarks=[r.remark_customer,r.remark_internal].filter(Boolean).join(' | ');
@@ -974,7 +974,6 @@ async function saveQS(){
     estimate_amount:price,
     final_amount:price,
     job_status:'เสร็จและจัดส่งแล้ว',
-    receiver_user_id:'พนักงานสาขา',
     transfer_to:null
   };
 
@@ -1197,7 +1196,6 @@ async function saveWSO(){
     estimate_amount:price,
     deposit_amount:deposit||null,
     job_status:'รอคิวช่าง',
-    receiver_user_id:'พนักงานสาขา',
     transfer_to:null
   };
 
