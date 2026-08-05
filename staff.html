@@ -821,7 +821,7 @@ function renderJobs(offlineMode){
   const rows=allJobs.map(r=>{
     const pendingTag=r._pending?`<span style="font-size:10px;background:var(--bg-warning);color:#854F0B;padding:2px 7px;border-radius:20px;margin-left:6px;white-space:nowrap;"><i class="ti ti-clock" style="font-size:10px;" aria-hidden="true"></i> รอ sync</span>`
       :r._pendingUpdate?`<span style="font-size:10px;background:var(--bg-warning);color:#854F0B;padding:2px 7px;border-radius:20px;margin-left:6px;white-space:nowrap;">แก้ไขรอ sync</span>`:'';
-    return `<tr onclick="openModal('${r.jobno.replace(/'/g,"\'")}')" ><td style="font-weight:600;">${r.jobno}${pendingTag}</td><td>${r.clientname||'—'}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.category||'—'}</td><td>${badge(r.finaldesc)}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;">${r.jobdate||'—'}</td></tr>`;
+    return `<tr onclick="openModal('${r.jobno.replace(/'/g,"\'")}')" ><td style="font-weight:600;">${r.jobno}${pendingTag}</td><td>${r.clientname||'—'}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.category||'—'}</td><td>${badge(r.job_status)}</td><td class="hide-sm" style="color:var(--muted);font-size:13px;">${r.jobdate||'—'}</td></tr>`;
   }).join('');
 
   let pagination='';
@@ -854,7 +854,7 @@ function openModal(jobno){
   currentModalJobno=jobno;
   document.getElementById('m-jobno').textContent=r.jobno;
   document.getElementById('m-cat').textContent=r.category||'';
-  document.getElementById('m-badge').innerHTML=badge(r.finaldesc);
+  document.getElementById('m-badge').innerHTML=badge(r.job_status);
   const warranty=r.is_warranty==='true'||r.is_warranty===true||r.is_warranty===1?'งานประกัน':null;
   const details=[['ลูกค้า',r.clientname],['โทรศัพท์',r.phone],['วันที่รับงาน',r.jobdate],['วันนัดลูกค้า',r.appoint_date],['วันที่ตกลงซ่อม',r.approved_at],['วันที่ส่งมอบ',r.delivered_at],['Serial No.',r.serialno],['ราคาประเมิน',r.estimate_amount?'฿'+parseFloat(r.estimate_amount||0).toLocaleString('th-TH'):null],['ช่างผู้รับผิดชอบ',r.technician_user_id],['ผู้รับงาน',r.receiver_user_id||null],['ประกัน',warranty]].filter(([,v])=>v);
   document.getElementById('m-grid').innerHTML=details.map(([k,v])=>`<div class="ik">${k}</div><div class="iv">${v}</div>`).join('');
@@ -869,7 +869,7 @@ function openModal(jobno){
   if(noTransto){
     editor.style.display='block';
     const sel=document.getElementById('m-status-select');
-    sel.value=r.job_status||'รอเช็ค';
+    sel.value=r.job_status||'NEW';
     const dateInput=document.getElementById('m-finishdate-input');
     dateInput.value=r.delivered_at||new Date().toISOString().slice(0,10);
     onStatusSelectChange();
