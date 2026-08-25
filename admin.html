@@ -101,10 +101,14 @@
       <h2>🔐 เข้าสู่ระบบ Admin</h2>
       <p>สำหรับผู้ดูแลระบบเท่านั้น</p>
       <div class="field">
-        <label>รหัสผ่าน</label>
-        <input type="password" id="pwd-input" placeholder="ใส่รหัสผ่าน" />
+        <label>อีเมล Admin</label>
+        <input type="email" id="email-input" placeholder="admin@example.com" autocomplete="username" />
       </div>
-      <button class="btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+      <div class="field">
+        <label>รหัสผ่าน</label>
+        <input type="password" id="pwd-input" placeholder="ใส่รหัสผ่าน" autocomplete="current-password" />
+      </div>
+      <button class="btn-primary" id="login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
       <div class="err-msg" id="login-err"></div>
     </div>
   </div>
@@ -152,7 +156,6 @@
 <script>
 const SUPABASE_URL = 'https://vhfyetvhtjkmqqthkotq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_rd5Zj1dwH_6PAlIA2B7HNQ_Z-5EUyCG';
-const ADMIN_PASSWORD = 'ExPert2003Q#$P';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const STATUS_COLORS = {
@@ -164,34 +167,130 @@ const STATUS_COLORS = {
   'เก็บที่ออฟฟิศ':'#777','คืนไม่มีอะไหล่':'#9b2222','ติดต่อไม่ได้':'#9b2222',
 };
 
-function doLogin() {
-  const v = document.getElementById('pwd-input').value;
-  if (v === ADMIN_PASSWORD) {
-    sessionStorage.setItem('admin_ok','1');
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('admin-panel').style.display = 'block';
-    loadStats();
-  } else {
-    document.getElementById('login-err').textContent = 'รหัสผ่านไม่ถูกต้อง';
+function setAdminUI(signedIn, displayName = 'Admin') {
+  document.getElementById('login-screen').style.display = signedIn ? 'none' : 'flex';
+  document.getElementById('admin-panel').style.display = signedIn ? 'block' : 'none';
+
+  const welcome = document.querySelector('#admin-panel > div:first-child > div');
+  if (welcome) welcome.textContent = `ยินดีต้อนรับ ${displayName || 'Admin'}`;
+}
+
+async function getAdminProfile(user) {
+  if (!user) return { ok: false, message: 'ไม่พบข้อมูลผู้ใช้งาน' };
+
+  const { data: profile, error } = await sb
+    .from('profiles')
+    .select('id,email,full_name,role,is_active')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      message: `เข้าสู่ระบบแล้ว แต่ตรวจสอบสิทธิ์ Admin ไม่ได้: ${error.message}`
+    };
+  }
+
+  if (!profile) {
+    return { ok: false, message: 'บัญชีนี้ยังไม่มีข้อมูลในตาราง profiles' };
+  }
+
+  if (String(profile.role || '').toLowerCase() !== 'admin' || profile.is_active === false) {
+    return { ok: false, message: 'บัญชีนี้ไม่มีสิทธิ์ Admin หรือถูกปิดใช้งาน' };
+  }
+
+  return { ok: true, profile };
+}
+
+async function doLogin() {
+  const emailEl = document.getElementById('email-input');
+  const pwdEl = document.getElementById('pwd-input');
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-err');
+
+  const email = emailEl.value.trim();
+  const password = pwdEl.value;
+  errEl.textContent = '';
+
+  if (!email || !password) {
+    errEl.textContent = 'กรุณากรอกอีเมลและรหัสผ่าน';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'กำลังเข้าสู่ระบบ...';
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+
+    const check = await getAdminProfile(data.user);
+    if (!check.ok) {
+      await sb.auth.signOut();
+      throw new Error(check.message);
+    }
+
+    localStorage.setItem('admin_email', email);
+    pwdEl.value = '';
+    setAdminUI(true, check.profile.full_name || 'Admin');
+    await loadStats();
+  } catch (err) {
+    setAdminUI(false);
+    errEl.textContent = err?.message || 'เข้าสู่ระบบไม่สำเร็จ';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'เข้าสู่ระบบ';
   }
 }
 
-function doLogout() {
-  sessionStorage.removeItem('admin_ok');
-  location.reload();
+async function doLogout() {
+  await sb.auth.signOut();
+  setAdminUI(false);
+  document.getElementById('pwd-input').value = '';
 }
 
-document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('pwd-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('email-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('pwd-input').focus();
+});
 
-if (sessionStorage.getItem('admin_ok') === '1') {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('admin-panel').style.display = 'block';
-  loadStats();
+async function restoreAdminSession() {
+  const savedEmail = localStorage.getItem('admin_email');
+  if (savedEmail) document.getElementById('email-input').value = savedEmail;
+
+  const { data: { session }, error } = await sb.auth.getSession();
+  if (error || !session?.user) {
+    setAdminUI(false);
+    return;
+  }
+
+  const check = await getAdminProfile(session.user);
+  if (!check.ok) {
+    await sb.auth.signOut();
+    setAdminUI(false);
+    document.getElementById('login-err').textContent = check.message;
+    return;
+  }
+
+  setAdminUI(true, check.profile.full_name || 'Admin');
+  await loadStats();
 }
+
+restoreAdminSession();
 
 async function loadStats() {
-  const { count } = await sb.from('repair_jobs').select('*', { count: 'exact', head: true });
-  const { data: meta } = await sb.from('upload_meta').select('*').eq('key','last_upload').single();
+  const { count, error: countError } = await sb.from('repair_jobs').select('*', { count: 'exact', head: true });
+
+  if (countError) {
+    document.getElementById('last-upload-text').textContent = `ไม่สามารถอ่านข้อมูล repair_jobs: ${countError.message}`;
+    document.getElementById('stats-grid').innerHTML = '';
+    document.getElementById('status-breakdown').innerHTML = '';
+    return;
+  }
+
+  const { data: meta } = await sb.from('upload_meta').select('*').eq('key','last_upload').maybeSingle();
   const lastUpload = meta ? meta.value : null;
 
   document.getElementById('last-upload-text').textContent =
@@ -211,13 +310,19 @@ async function loadStats() {
     page++;
   }
 
-  const activeStatuses = ['กำลังซ่อม','รอคิวช่าง','รอเช็ค','สั่งแล้วรออะไหล่','ส่งทำ','รอหาอะหลั่ย','รอ Confirm','เทียบเวลา','กำลังซ่อม+ส่งทำ','งานเสร็จรอมารับ'];
+  const activeStatuses = [
+    'WAITING_CHECK','CHECKING','WAITING_QUOTATION','WAITING_CUSTOMER_APPROVAL',
+    'CUSTOMER_APPROVED','IN_PROGRESS','WAITING_PARTS','OUTSOURCE','QC','READY_FOR_PICKUP',
+    'กำลังซ่อม','รอคิวช่าง','รอเช็ค','สั่งแล้วรออะไหล่','ส่งทำ','รอหาอะหลั่ย',
+    'รอ Confirm','เทียบเวลา','กำลังซ่อม+ส่งทำ','งานเสร็จรอมารับ'
+  ];
   const activeCount = activeStatuses.reduce((s,k) => s + (countMap[k]||0), 0);
+  const deliveredCount = (countMap['DELIVERED']||0) + (countMap['เสร็จและจัดส่งแล้ว']||0);
 
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat"><div class="n">${(count||0).toLocaleString()}</div><div class="l">งานทั้งหมด</div></div>
     <div class="stat"><div class="n">${activeCount}</div><div class="l">กำลังดำเนินการ</div></div>
-    <div class="stat"><div class="n">${countMap['เสร็จและจัดส่งแล้ว']||0}</div><div class="l">เสร็จและจัดส่งแล้ว</div></div>
+    <div class="stat"><div class="n">${deliveredCount}</div><div class="l">เสร็จและจัดส่งแล้ว</div></div>
   `;
 
   const sorted = Object.entries(countMap).sort((a,b)=>b[1]-a[1]);
@@ -267,6 +372,20 @@ const FIELD_ALIASES = {
 
 async function handleFile(file) {
   if (!file) return;
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) {
+    showMsg(true, '❌ Session หมดอายุ กรุณาเข้าสู่ระบบ Admin ใหม่', 'error');
+    setAdminUI(false);
+    return;
+  }
+
+  const check = await getAdminProfile(session.user);
+  if (!check.ok) {
+    showMsg(true, `❌ ${check.message}`, 'error');
+    return;
+  }
+
   showProg(true, 'กำลังอ่านไฟล์...', 10);
   showMsg(false);
 
@@ -415,7 +534,10 @@ async function handleFile(file) {
     const { error } = await sb.from('repair_jobs').upsert(chunk, { onConflict: 'jobno' });
     if (error) {
       showProg(false);
-      showMsg(true, `❌ บันทึกข้อมูลไม่สำเร็จ: ${error.message}`, 'error');
+      const rlsHint = error.code === '42501' || /row-level security/i.test(error.message || '')
+        ? ' | เข้าสู่ระบบ Admin สำเร็จแล้ว แต่ RLS ฝั่ง Supabase ยังไม่อนุญาตบัญชี Admin นี้ให้ INSERT/UPDATE repair_jobs'
+        : '';
+      showMsg(true, `❌ บันทึกข้อมูลไม่สำเร็จ: ${error.message}${rlsHint}`, 'error');
       return;
     }
     uploaded += chunk.length;
@@ -425,11 +547,12 @@ async function handleFile(file) {
   }
 
   const now = new Date().toLocaleString('th-TH', { timeZone:'Asia/Bangkok' });
-  await sb.from('upload_meta').upsert({ key:'last_upload', value: now }, { onConflict:'key' });
+  const { error: metaError } = await sb.from('upload_meta').upsert({ key:'last_upload', value: now }, { onConflict:'key' });
 
   showProg(true, 'เสร็จสิ้น!', 100);
   setTimeout(() => showProg(false), 800);
-  showMsg(true, `✅ อัปโหลดสำเร็จ — บันทึก ${records.length.toLocaleString()} รายการ เมื่อ ${now}`, 'success');
+  const metaNote = metaError ? ' (บันทึกเวลาอัปโหลดล่าสุดไม่สำเร็จ)' : '';
+  showMsg(true, `✅ อัปโหลดสำเร็จ — บันทึก ${records.length.toLocaleString()} รายการ เมื่อ ${now}${metaNote}`, 'success');
   loadStats();
 }
 
