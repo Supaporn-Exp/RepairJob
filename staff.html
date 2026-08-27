@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- build: 2026-08-27-mobile-live-v2 -->
 <title>พนักงานสาขา — Expert Watch</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
@@ -447,7 +451,8 @@ function loadSeq(){try{return JSON.parse(localStorage.getItem('expert_seq')||'{}
 function saveSeq(seq){try{localStorage.setItem('expert_seq',JSON.stringify(seq))}catch(e){}}
 const BRANCH_SEQ=loadSeq();
 const BRANDS=['A. Lange & Söhne','Alpina','Audemars Piguet','Ball Watch','Baume & Mercier','Bell & Ross','Blancpain','Breguet','Breitling','Bulgari','Cartier','Casio','Certina','Chopard','Citizen','Corum','Diesel','Doxa','Eterna','Fortis','Frederique Constant','Girard-Perregaux','Grand Seiko','Hamilton','Hublot','IWC','Jaeger-LeCoultre','Longines','Maurice Lacroix','Mido','Montblanc','Movado','Nomos','Omega','Oris','Panerai','Patek Philippe','Piaget','Porsche Design','Rado','Raymond Weil','Richard Mille','Rolex','Seiko','TAG Heuer','Tissot','Tudor','Ulysse Nardin','Vacheron Constantin','Zenith'];
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const sb=(window.supabase&&typeof window.supabase.createClient==='function')?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+if(!sb)console.warn('Supabase JS SDK unavailable; repair list will use direct REST mode.');
 const STATUS_LABEL={
   'NEW':'รับงานใหม่',
   'WAITING_CHECK':'รอเช็ค',
@@ -664,8 +669,7 @@ function setupConnectionMonitor(){
         signal:ctrl.signal,
         cache:'no-store',
         headers:{
-          apikey:SUPABASE_ANON_KEY,
-          Authorization:'Bearer '+SUPABASE_ANON_KEY
+          apikey:SUPABASE_ANON_KEY
         }
       });
       clearTimeout(t);
@@ -768,35 +772,85 @@ function switchMenu(menu){
 const PAGE_SIZE=50;
 let currentPage=0,totalCount=0,currentSearchQ='';
 
+async function fetchRepairJobsDirect(){
+  const params=new URLSearchParams();
+  params.set('select','*');
+  params.set('owner_branch_id','eq.'+currentShop);
+
+  if(currentTab==='active'){
+    params.set('job_status','in.('+ACTIVE_STATUSES.join(',')+')');
+  }
+  if(currentSearchQ){
+    // PostgREST OR filter. Escape the few characters that can alter the filter grammar.
+    const safeQ=currentSearchQ.replace(/[(),]/g,' ').trim();
+    params.set('or',`(jobno.ilike.*${safeQ}*,clientname.ilike.*${safeQ}*)`);
+  }
+
+  params.set('order','jobdate.desc');
+  params.set('offset',String(currentPage*PAGE_SIZE));
+  params.set('limit',String(PAGE_SIZE));
+
+  const url=SUPABASE_URL+'/rest/v1/repair_jobs?'+params.toString();
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),12000);
+  let res;
+  try{
+    res=await fetch(url,{
+      method:'GET',
+      signal:ctrl.signal,
+      cache:'no-store',
+      headers:{
+        apikey:SUPABASE_ANON_KEY,
+        Prefer:'count=exact',
+        Accept:'application/json'
+      }
+    });
+  }finally{
+    clearTimeout(timer);
+  }
+
+  const raw=await res.text();
+  if(!res.ok){
+    let detail=raw;
+    try{
+      const j=JSON.parse(raw);
+      detail=j.message||j.details||j.hint||raw;
+    }catch(e){}
+    const err=new Error(`Supabase HTTP ${res.status}: ${detail||res.statusText}`);
+    err.status=res.status;
+    throw err;
+  }
+
+  let data=[];
+  try{ data=raw?JSON.parse(raw):[]; }
+  catch(e){ throw new Error('Supabase ส่งข้อมูลกลับมาในรูปแบบที่อ่านไม่ได้'); }
+
+  // With Prefer: count=exact PostgREST returns Content-Range such as 0-27/28.
+  let count=data.length;
+  const cr=res.headers.get('content-range');
+  if(cr&&cr.includes('/')){
+    const n=parseInt(cr.split('/').pop(),10);
+    if(Number.isFinite(n))count=n;
+  }
+  return {data,count};
+}
+
 async function loadJobs(resetPage=true){
   if(resetPage)currentPage=0;
   const div=document.getElementById('jobs-container');
   div.innerHTML='<div class="state-box"><div class="spinner"></div><div>กำลังโหลด...</div></div>';
 
-  // พยายามดึงจาก Supabase ก่อนเสมอ ไม่ผูกกับ navigator.onLine / isOnline
-  // เพราะบนมือถือค่าดังกล่าวอาจคลาดเคลื่อน แม้เข้าถึงอินเทอร์เน็ตได้จริง
+  // อ่านรายการงานผ่าน PostgREST โดยตรง เพื่อให้มือถือไม่ขึ้นกับเวอร์ชันของ supabase-js
+  // และใช้ publishable key เฉพาะใน apikey header ตามรูปแบบของ Supabase API key รุ่นใหม่
   try{
-    let query=sb.from('repair_jobs').select('*',{count:'exact'}).eq('owner_branch_id',currentShop);
-    if(currentTab==='active'){
-      query=query.in('job_status',ACTIVE_STATUSES);
-    }
-    if(currentSearchQ){
-      query=query.or(`jobno.ilike.%${currentSearchQ}%,clientname.ilike.%${currentSearchQ}%`);
-    }
-    const from=currentPage*PAGE_SIZE;
-    const to=from+PAGE_SIZE-1;
-    query=query.order('jobdate',{ascending:false}).range(from,to);
-
-    const {data,error,count}=await query;
-    if(error)throw error;
-
+    const {data,count}=await fetchRepairJobsDirect();
     isOnline=true;
     updateOfflineBadge();
     updateDocNos();
     allJobs=data||[];
-    totalCount=count||0;
+    totalCount=Number.isFinite(count)?count:allJobs.length;
 
-    // Cache เป็น optional: ถ้า IndexedDB ล้มเหลว ห้ามทำให้ข้อมูลจาก Supabase หาย
+    // Offline cache เป็น optional เท่านั้น ถ้า IndexedDB ล้มเหลวยังต้องแสดงข้อมูล online ได้
     if(idb&&resetPage&&currentPage===0&&!currentSearchQ){
       try{
         await idbClearCache(currentShop);
@@ -806,7 +860,6 @@ async function loadJobs(resetPage=true){
       }
     }
 
-    // pending local rows ก็เป็น optional เช่นกัน
     if(idb&&currentPage===0){
       try{
         const pending=await idbGetAll(STORE_PENDING,currentShop);
@@ -822,46 +875,46 @@ async function loadJobs(resetPage=true){
     renderJobs();
     return;
   }catch(err){
-    console.warn('Supabase load failed; trying offline cache:',err);
+    console.error('Live job load failed:',err);
     isOnline=false;
     updateOfflineBadge();
     updateDocNos();
-  }
 
-  // Supabase ใช้ไม่ได้จริง จึงค่อย fallback ไป IndexedDB
-  if(!idb){
-    div.innerHTML='<div class="state-box">ไม่สามารถเชื่อมต่อระบบได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</div>';
-    return;
-  }
+    // ถ้ามือถือไม่มี cache ให้แสดง error จริง เพื่อวินิจฉัยได้ ไม่ใช้คำว่า "ไม่พบรายการ"
+    if(!idb){
+      div.innerHTML=`<div class="state-box"><div style="font-weight:600;color:var(--danger);margin-bottom:6px;">โหลดข้อมูลจากระบบกลางไม่สำเร็จ</div><div style="font-size:12px;line-height:1.6;word-break:break-word;">${String(err.message||err)}</div><button onclick="loadJobs(true)" style="margin-top:12px;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:8px 14px;font-family:var(--font);cursor:pointer;">ลองใหม่</button></div>`;
+      return;
+    }
 
-  try{
-    const cached=await idbGetAll(STORE_CACHE,currentShop);
-    const pending=await idbGetAll(STORE_PENDING,currentShop);
-    const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
-    const pendingUpdates={};
-    pending.filter(p=>p.op==='update').forEach(p=>{pendingUpdates[p.row.jobno]=p.row.updateData;});
+    // Supabase ใช้ไม่ได้จริง จึงค่อย fallback ไป IndexedDB
+    try{
+      const cached=await idbGetAll(STORE_CACHE,currentShop);
+      const pending=await idbGetAll(STORE_PENDING,currentShop);
+      const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
+      const pendingUpdates={};
+      pending.filter(p=>p.op==='update').forEach(p=>{pendingUpdates[p.row.jobno]=p.row.updateData;});
 
-    let merged=[...pendingRows,...cached].map(r=>{
-      if(pendingUpdates[r.jobno]){
-        return {...r,...pendingUpdates[r.jobno],_pendingUpdate:true};
+      let merged=[...pendingRows,...cached].map(r=>{
+        if(pendingUpdates[r.jobno])return {...r,...pendingUpdates[r.jobno],_pendingUpdate:true};
+        return r;
+      });
+
+      if(currentTab==='active')merged=merged.filter(r=>ACTIVE_STATUSES.includes(r.job_status));
+      if(currentSearchQ){
+        const q=currentSearchQ.toLowerCase();
+        merged=merged.filter(r=>(r.jobno||'').toLowerCase().includes(q)||(r.clientname||'').toLowerCase().includes(q));
       }
-      return r;
-    });
 
-    if(currentTab==='active'){
-      merged=merged.filter(r=>ACTIVE_STATUSES.includes(r.job_status));
+      allJobs=merged;
+      totalCount=merged.length;
+      if(merged.length){
+        renderJobs(true);
+      }else{
+        div.innerHTML=`<div class="state-box"><div style="font-weight:600;color:var(--danger);margin-bottom:6px;">โหลดข้อมูลจากระบบกลางไม่สำเร็จ</div><div style="font-size:12px;line-height:1.6;word-break:break-word;">${String(err.message||err)}</div><div style="font-size:11px;color:var(--muted);margin-top:8px;">เครื่องนี้ยังไม่มีข้อมูล offline cache</div><button onclick="loadJobs(true)" style="margin-top:12px;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:8px 14px;font-family:var(--font);cursor:pointer;">ลองใหม่</button></div>`;
+      }
+    }catch(cacheErr){
+      div.innerHTML=`<div class="state-box"><div style="font-weight:600;color:var(--danger);margin-bottom:6px;">ไม่สามารถโหลดข้อมูลได้</div><div style="font-size:12px;line-height:1.6;word-break:break-word;">${String(err.message||err)}</div><button onclick="loadJobs(true)" style="margin-top:12px;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:8px 14px;font-family:var(--font);cursor:pointer;">ลองใหม่</button></div>`;
     }
-    if(currentSearchQ){
-      const q=currentSearchQ.toLowerCase();
-      merged=merged.filter(r=>(r.jobno||'').toLowerCase().includes(q)||(r.clientname||'').toLowerCase().includes(q));
-    }
-
-    allJobs=merged;
-    totalCount=merged.length;
-    renderJobs(true);
-  }catch(cacheErr){
-    console.warn('Offline cache read failed:',cacheErr);
-    div.innerHTML='<div class="state-box">ไม่สามารถโหลดข้อมูลได้ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง</div>';
   }
 }
 
