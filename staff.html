@@ -634,10 +634,15 @@ async function syncPendingJobs(){
 }
 
 function setupConnectionMonitor(){
+  // ป้องกันการผูก event / interval ซ้ำเมื่อ login ใหม่ในหน้าเดิม
+  if(window.__expertConnectionMonitorSetup)return;
+  window.__expertConnectionMonitorSetup=true;
+
   window.addEventListener('online',()=>{
     isOnline=true;
     updateOfflineBadge();
     updateDocNos();
+    if(currentShop&&document.getElementById('jobs-container'))loadJobs(true);
     setTimeout(syncPendingJobs,1000);
   });
   window.addEventListener('offline',()=>{
@@ -645,15 +650,41 @@ function setupConnectionMonitor(){
     updateOfflineBadge();
     updateDocNos();
   });
+
+  // ตรวจการเชื่อมต่อด้วย endpoint ข้อมูลจริง แทน HEAD /rest/v1/
+  // ซึ่งบาง browser / mobile network อาจตอบต่างจาก desktop
   setInterval(async()=>{
+    if(!currentShop)return;
     try{
       const ctrl=new AbortController();
-      const t=setTimeout(()=>ctrl.abort(),5000);
-      await fetch(SUPABASE_URL+'/rest/v1/',{method:'HEAD',signal:ctrl.signal,headers:{apikey:SUPABASE_ANON_KEY}});
+      const t=setTimeout(()=>ctrl.abort(),7000);
+      const url=SUPABASE_URL+'/rest/v1/repair_jobs?select=jobno&owner_branch_id=eq.'+encodeURIComponent(currentShop)+'&limit=1';
+      const res=await fetch(url,{
+        method:'GET',
+        signal:ctrl.signal,
+        cache:'no-store',
+        headers:{
+          apikey:SUPABASE_ANON_KEY,
+          Authorization:'Bearer '+SUPABASE_ANON_KEY
+        }
+      });
       clearTimeout(t);
-      if(!isOnline){isOnline=true;updateOfflineBadge();updateDocNos();syncPendingJobs();}
+      if(!res.ok)throw new Error('Connection check failed: '+res.status);
+
+      const wasOffline=!isOnline;
+      isOnline=true;
+      updateOfflineBadge();
+      updateDocNos();
+      if(wasOffline){
+        syncPendingJobs();
+        if(document.getElementById('jobs-container'))loadJobs(true);
+      }
     }catch(e){
-      if(isOnline){isOnline=false;updateOfflineBadge();updateDocNos();}
+      if(isOnline){
+        isOnline=false;
+        updateOfflineBadge();
+        updateDocNos();
+      }
     }
   },15000);
 }
@@ -674,6 +705,20 @@ function updateDocNos(){
   }
 }
 
+async function ensureIDB(){
+  if(idb)return true;
+  try{
+    await openIDB();
+    return true;
+  }catch(err){
+    // IndexedDB เป็นเพียง offline cache — ถ้า mobile/browser ใช้ไม่ได้
+    // ต้องยังให้ Supabase online mode ทำงานต่อได้
+    console.warn('IndexedDB unavailable; continuing online only:',err);
+    idb=null;
+    return false;
+  }
+}
+
 async function doStaffLogin(){
   const shop=document.getElementById('shop-select').value;
   const pwd=document.getElementById('staff-pwd').value;
@@ -681,7 +726,7 @@ async function doStaffLogin(){
   if(!shop){err.textContent='กรุณาเลือกสาขา';return;}
   if(BRANCH_PASSWORDS[shop]!==pwd){err.textContent='รหัสผ่านไม่ถูกต้อง';return;}
   currentShop=shop;sessionStorage.setItem('staff_shop',shop);
-  if(!idb)await openIDB();
+  await ensureIDB();
   setupConnectionMonitor();
   showPanel(shop);loadJobs();
   syncPendingJobs();
@@ -704,7 +749,7 @@ const saved=sessionStorage.getItem('staff_shop');
 if(saved){
   (async()=>{
     currentShop=saved;
-    if(!idb)await openIDB();
+    await ensureIDB();
     setupConnectionMonitor();
     showPanel(saved);loadJobs();
     syncPendingJobs();
@@ -728,70 +773,96 @@ async function loadJobs(resetPage=true){
   const div=document.getElementById('jobs-container');
   div.innerHTML='<div class="state-box"><div class="spinner"></div><div>กำลังโหลด...</div></div>';
 
-  if(isOnline){
-    try{
-      let query=sb.from('repair_jobs').select('*',{count:'exact'}).eq('owner_branch_id',currentShop);
-      if(currentTab==='active'){
-        query=query.in('job_status',ACTIVE_STATUSES);
-      }
-      if(currentSearchQ){
-        query=query.or(`jobno.ilike.%${currentSearchQ}%,clientname.ilike.%${currentSearchQ}%`);
-      }
-      const from=currentPage*PAGE_SIZE;
-      const to=from+PAGE_SIZE-1;
-      query=query.order('jobdate',{ascending:false}).range(from,to);
+  // พยายามดึงจาก Supabase ก่อนเสมอ ไม่ผูกกับ navigator.onLine / isOnline
+  // เพราะบนมือถือค่าดังกล่าวอาจคลาดเคลื่อน แม้เข้าถึงอินเทอร์เน็ตได้จริง
+  try{
+    let query=sb.from('repair_jobs').select('*',{count:'exact'}).eq('owner_branch_id',currentShop);
+    if(currentTab==='active'){
+      query=query.in('job_status',ACTIVE_STATUSES);
+    }
+    if(currentSearchQ){
+      query=query.or(`jobno.ilike.%${currentSearchQ}%,clientname.ilike.%${currentSearchQ}%`);
+    }
+    const from=currentPage*PAGE_SIZE;
+    const to=from+PAGE_SIZE-1;
+    query=query.order('jobdate',{ascending:false}).range(from,to);
 
-      const {data,error,count}=await query;
-      if(error)throw error;
+    const {data,error,count}=await query;
+    if(error)throw error;
 
-      allJobs=data||[];
-      totalCount=count||0;
+    isOnline=true;
+    updateOfflineBadge();
+    updateDocNos();
+    allJobs=data||[];
+    totalCount=count||0;
 
-      if(idb&&resetPage&&currentPage===0&&!currentSearchQ){
+    // Cache เป็น optional: ถ้า IndexedDB ล้มเหลว ห้ามทำให้ข้อมูลจาก Supabase หาย
+    if(idb&&resetPage&&currentPage===0&&!currentSearchQ){
+      try{
         await idbClearCache(currentShop);
         for(const r of allJobs){await idbAdd(STORE_CACHE,{...r,owner_branch_id:currentShop});}
+      }catch(cacheErr){
+        console.warn('Could not update offline cache:',cacheErr);
       }
+    }
 
-      const pending=idb?await idbGetAll(STORE_PENDING,currentShop):[];
-      if(pending.length>0&&currentPage===0){
-        const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
-        allJobs=[...pendingRows,...allJobs];
+    // pending local rows ก็เป็น optional เช่นกัน
+    if(idb&&currentPage===0){
+      try{
+        const pending=await idbGetAll(STORE_PENDING,currentShop);
+        if(pending.length>0){
+          const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
+          allJobs=[...pendingRows,...allJobs];
+        }
+      }catch(pendingErr){
+        console.warn('Could not read pending offline rows:',pendingErr);
       }
-
-      renderJobs();
-      return;
-    }catch(err){
-      isOnline=false;
-      updateOfflineBadge();
     }
+
+    renderJobs();
+    return;
+  }catch(err){
+    console.warn('Supabase load failed; trying offline cache:',err);
+    isOnline=false;
+    updateOfflineBadge();
+    updateDocNos();
   }
 
-  if(!idb){div.innerHTML=`<div class="state-box">ไม่มีการเชื่อมต่อ และไม่มีข้อมูลที่เก็บไว้ในเครื่อง</div>`;return;}
+  // Supabase ใช้ไม่ได้จริง จึงค่อย fallback ไป IndexedDB
+  if(!idb){
+    div.innerHTML='<div class="state-box">ไม่สามารถเชื่อมต่อระบบได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</div>';
+    return;
+  }
 
-  const cached=await idbGetAll(STORE_CACHE,currentShop);
-  const pending=await idbGetAll(STORE_PENDING,currentShop);
-  const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
-  const pendingUpdates={};
-  pending.filter(p=>p.op==='update').forEach(p=>{pendingUpdates[p.row.jobno]=p.row.updateData;});
+  try{
+    const cached=await idbGetAll(STORE_CACHE,currentShop);
+    const pending=await idbGetAll(STORE_PENDING,currentShop);
+    const pendingRows=pending.filter(p=>p.op==='insert').map(p=>({...p.row,_pending:true}));
+    const pendingUpdates={};
+    pending.filter(p=>p.op==='update').forEach(p=>{pendingUpdates[p.row.jobno]=p.row.updateData;});
 
-  let merged=[...pendingRows,...cached].map(r=>{
-    if(pendingUpdates[r.jobno]){
-      return {...r,...pendingUpdates[r.jobno],_pendingUpdate:true};
+    let merged=[...pendingRows,...cached].map(r=>{
+      if(pendingUpdates[r.jobno]){
+        return {...r,...pendingUpdates[r.jobno],_pendingUpdate:true};
+      }
+      return r;
+    });
+
+    if(currentTab==='active'){
+      merged=merged.filter(r=>ACTIVE_STATUSES.includes(r.job_status));
     }
-    return r;
-  });
+    if(currentSearchQ){
+      const q=currentSearchQ.toLowerCase();
+      merged=merged.filter(r=>(r.jobno||'').toLowerCase().includes(q)||(r.clientname||'').toLowerCase().includes(q));
+    }
 
-  if(currentTab==='active'){
-    merged=merged.filter(r=>ACTIVE_STATUSES.includes(r.job_status));
+    allJobs=merged;
+    totalCount=merged.length;
+    renderJobs(true);
+  }catch(cacheErr){
+    console.warn('Offline cache read failed:',cacheErr);
+    div.innerHTML='<div class="state-box">ไม่สามารถโหลดข้อมูลได้ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง</div>';
   }
-  if(currentSearchQ){
-    const q=currentSearchQ.toLowerCase();
-    merged=merged.filter(r=>(r.jobno||'').toLowerCase().includes(q)||(r.clientname||'').toLowerCase().includes(q));
-  }
-
-  allJobs=merged;
-  totalCount=merged.length;
-  renderJobs(true);
 }
 
 function switchTab(tab,btn){
